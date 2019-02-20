@@ -1,0 +1,14 @@
+json_logger:
+  active: true
+  path: ./logs/output.json
+
+file_logger:
+  active: true
+  path: ./logs/output.log
+
+rotation:
+  interval_unit: "m"
+  interval_value: 1
+
+# Slack + DD Integrations?
+# AWS / S3 Integrations?

@@ -13,25 +13,28 @@ __author__ = "Jakrin Juangbhanich"
 __email__ = "juangbhanich.k@gmail.com"
 
 
-def debug():
-    pass
+def debug(message, data=None):
+    __log_with_level(message, data, logging.DEBUG)
 
 
 def info(message, data=None):
     __log_with_level(message, data, logging.INFO)
 
 
-def warn():
-    pass
+def warning(message, data=None):
+    __log_with_level(message, data, logging.WARNING)
 
 
-def error():
-    pass
+def error(message, data=None):
+    __log_with_level(message, data, logging.ERROR)
 
 
-def critical():
-    pass
+def critical(message, data=None):
+    __log_with_level(message, data, logging.CRITICAL)
 
+
+def get_instance():
+    return Logger.get_instance()
 
 def __log_with_level(message, data, level):
     logger = Logger.get_instance()

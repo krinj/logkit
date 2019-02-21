@@ -5,6 +5,7 @@
 """
 
 import logging
+from typing import Union
 from logmatic.logger import Logger
 
 __author__ = "Jakrin Juangbhanich"
@@ -29,6 +30,18 @@ def error(message, data=None):
 
 def critical(message, data=None):
     __log_with_level(message, data, logging.CRITICAL)
+
+
+def increment(metric_name: str, value: Union[float, int]=1):
+    get_instance().increment(metric_name, value)
+
+
+def gauge(metric_name: str, value: Union[float, int]):
+    get_instance().gauge(metric_name, value)
+
+
+def event(title: str, text: str, data: dict):
+    get_instance().event(title, text, data)
 
 
 def get_instance():

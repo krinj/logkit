@@ -4,10 +4,12 @@
 An instance of the Logmatic logger. Wraps the Python logger and some other integrations.
 """
 import datetime
+import json
 import logging
 import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
+from typing import Union
 
 import dotenv
 from gv_tools.util import pather
@@ -48,6 +50,11 @@ class Logger:
         self.native_logging_map: dict = None
         self.use_color: bool = True
         self.level = logging.INFO
+
+        # DD Integration.
+        self.datadog = None
+        self.dd_stats = None
+
         self.auto_initialize()
         self._load_config()
 
@@ -61,7 +68,7 @@ class Logger:
         data = {
             "json_logger": {
                 "active": True,
-                "path": "./logs/output.json"
+                "path": "./logs/output.json.log"
             },
             "file_logger": {
                 "active": True,
@@ -74,7 +81,8 @@ class Logger:
             "datadog": {
                 "active": False,
                 "api_key": None,
-                "app_key": None
+                "app_key": None,
+                "host": None
             }
         }
         return data
@@ -121,11 +129,18 @@ class Logger:
 
         print("Data Loaded", data)
 
+        interval_unit = data["rotation"]["interval_unit"]
+        interval_value = data["rotation"]["interval_value"]
+
         if data["file_logger"]["active"]:
-            self._attach_file_logger(data["file_logger"]["path"])
+            self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value)
 
         if data["json_logger"]["active"]:
-            self._attach_json_logger(data["json_logger"]["path"])
+            self._attach_json_logger(data["json_logger"]["path"], interval_unit, interval_value)
+
+        datadog_map = data["datadog"]
+        if datadog_map["active"]:
+            self._attach_datadog(datadog_map["api_key"], datadog_map["app_key"], datadog_map["host"])
 
     def _save_config_env(self, data):
         lines = []
@@ -178,6 +193,7 @@ class Logger:
     def set_native_logger(self, logger):
         # Log Level Map
         self.native_logger = logger
+        self.native_logger.setLevel(self.level)
         self.native_logging_map = {
             logging.DEBUG: logger.debug,
             logging.INFO: logger.info,
@@ -190,7 +206,23 @@ class Logger:
     # Third Party Attachments.
     # ======================================================================================================================
 
-    # ...
+    def _attach_datadog(self, api_key: str, app_key: str, host: Union[None, str]=None):
+        import datadog
+        self.datadog = datadog
+        self.datadog.initialize(api_key=api_key, app_key=app_key, host=host)
+        self.dd_stats = datadog.ThreadStats()
+        self.dd_stats.start()
+
+    def _log_to_dd(self, data):
+        data["service"] = "python-logger"
+        data["hostname"] = "python-host"
+        payload = json.dumps(data)
+        print(payload)
+        command = f"curl -X POST https://http-intake.logs.datadoghq.com/v1/input/5676cb0469c440fbbc5bef2d17ac3de4 -H 'Content-Type: application/json' -d '{payload}' &"
+        print(command)
+        os.system(
+            command
+        )
 
     # ======================================================================================================================
     # Operational Logic
@@ -205,6 +237,29 @@ class Logger:
 
         return self.native_logging_map[level]
 
+    def event(self, title: str, text: str, data: dict):
+        if self.datadog is not None:
+            # Transform data into tags.
+            tags = [f"{k}:{v}" for k, v in data.items()]
+            self.datadog.api.Event.create(title=title, text=text, tags=tags)
+
+        message = f"{title}: {text}"
+        self.write(message, data, logging.INFO)
+
+    def increment(self, metric_name: str, value: Union[float, int]):
+        self.write(f"Incrementing {metric_name}: {value}", None, logging.DEBUG)
+        if self.dd_stats is not None:
+            self.dd_stats.increment(metric_name, value)
+
+    def gauge(self, metric_name: str, value: Union[float, int]):
+        self.write(f"Gauging {metric_name}: {value}", None, logging.DEBUG)
+        if self.dd_stats is not None:
+            self.dd_stats.gauge(metric_name, value)
+    
+    # ======================================================================================================================
+    # Normal Logging.
+    # ======================================================================================================================
+
     def write(self, message, data, level):
 
         # Parse the data first.
@@ -216,6 +271,10 @@ class Logger:
         native_logging_action = self._get_native_logging_action(level)
         if native_logging_action is not None:
             native_logging_action(message, extra={"data": data})
+
+        if self.datadog is not None:
+            data = {"message": message, "level": logging.getLevelName(level), "data": data}
+            self._log_to_dd(data)
 
         self.console_write(message, data, level, with_color=self.use_color)
 
@@ -230,7 +289,10 @@ class Logger:
 
         if data is not None:
             for k, v in data.items():
-                self.console_write_line(f"  {k}: {v}", level, with_color)
+                use_key = k
+                if with_color:
+                    use_key = self.set_level_color(k, level)
+                self.console_write_line(f"  {use_key}: {v}", level, with_color)
 
     def console_write_line(self, content, level, with_color: bool = False):
         time_str = f"{datetime.datetime.now():%H:%M}"

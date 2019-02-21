@@ -6,3 +6,5 @@ tests/logs/
 *.pyc
 
 logs/
+
+tests/logmatic\.env

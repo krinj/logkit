@@ -1,9 +1,0 @@
-file_logger:
-  active: true
-  path: ./logs/output.log
-json_logger:
-  active: true
-  path: ./logs/output.json
-rotation:
-  interval_unit: m
-  interval_value: 1

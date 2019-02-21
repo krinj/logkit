@@ -5,8 +5,6 @@
 """
 
 import logging
-from typing import Union
-
 from logmatic.logger import Logger
 
 __author__ = "Jakrin Juangbhanich"
@@ -35,6 +33,7 @@ def critical(message, data=None):
 
 def get_instance():
     return Logger.get_instance()
+
 
 def __log_with_level(message, data, level):
     logger = Logger.get_instance()

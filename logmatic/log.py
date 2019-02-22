@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-<Description>
+Static functions for using the logger. The logger is supposed to be set up
+with lazy loading, and to be configured via the generated .env file.
 """
 
 import logging

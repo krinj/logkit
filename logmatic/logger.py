@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
-An instance of the Logmatic logger. Wraps the Python logger and some other integrations.
+An instance of the Logmatic logger. Wraps the Python logger and some other 3rd-P integrations.
 """
+
 import datetime
 import json
 import logging
@@ -14,8 +15,8 @@ from logging.handlers import TimedRotatingFileHandler
 from typing import Union
 
 import dotenv
-from gv_tools.util import pather
 from logmatic.formatter.extended_json_formatter import ExtendedJSONFormatter
+from logmatic.utils import pather
 
 __author__ = "Jakrin Juangbhanich"
 __email__ = "juangbhanich.k@gmail.com"
@@ -28,8 +29,6 @@ class Logger:
     YELLOW = '\33[33m'
     BLUE = '\33[34m'
     DEFAULT_COLOR = '\33[0m'
-
-    DEFAULT_CONFIG_PATH = "logmatic.yaml"
     DEFAULT_ENV_PATH = "logmatic.env"
     COLUMN_PADDING: int = 8  # Minimum width of column when writing to console.
 
@@ -43,7 +42,7 @@ class Logger:
     def get_instance() -> "Logger":
         if Logger._instance is None:
             Logger._instance = Logger()
-            Logger._instance.auto_initialize()
+            Logger._instance._auto_initialize()
         return Logger._instance
 
     def __init__(self):
@@ -52,6 +51,7 @@ class Logger:
         self.native_logging_map: dict = None
         self.use_color: bool = True
         self.level = logging.INFO
+        self.print_gap: bool = True
 
         # DD Integration.
         self.datadog = None
@@ -63,7 +63,7 @@ class Logger:
         self._dd_http_log_list: list = []
         self._dd_is_logging: bool = False
 
-        self.auto_initialize()
+        self._auto_initialize()
         self._load_config()
 
     # ======================================================================================================================
@@ -83,8 +83,9 @@ class Logger:
                 "path": "./logs/output.log"
             },
             "rotation": {
-                "interval_unit": "m",
-                "interval_value": 1
+                "interval_unit": "d",
+                "interval_value": 1,
+                "backup_count": 30
             },
             "datadog": {
                 "active": False,
@@ -93,7 +94,8 @@ class Logger:
                 "http_log_active": False,
                 "host": None,
                 "service": None
-            }
+            },
+            "print_gap": 1
         }
         return data
 
@@ -141,12 +143,14 @@ class Logger:
 
         interval_unit = data["rotation"]["interval_unit"]
         interval_value = data["rotation"]["interval_value"]
+        backup_count = data["rotation"]["backup_count"]
+        self.print_gap = data["print_gap"]
 
         if data["file_logger"]["active"]:
-            self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value)
+            self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value, backup_count)
 
         if data["json_logger"]["active"]:
-            self._attach_json_logger(data["json_logger"]["path"], interval_unit, interval_value)
+            self._attach_json_logger(data["json_logger"]["path"], interval_unit, interval_value, backup_count)
 
         datadog_map = data["datadog"]
         if datadog_map["active"]:
@@ -178,10 +182,10 @@ class Logger:
         with open(self.DEFAULT_ENV_PATH, "w") as f:
             f.writelines("\n".join(lines))
 
-    def auto_initialize(self):
+    def _auto_initialize(self):
         self.set_native_logger(logging.getLogger("logger"))
 
-    def _attach_json_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 10):
+    def _attach_json_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 30):
         pather.create(path)
         handler = TimedRotatingFileHandler(
             path,
@@ -192,7 +196,7 @@ class Logger:
         handler.setFormatter(formatter)
         self.native_logger.addHandler(handler)
 
-    def _attach_file_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 10):
+    def _attach_file_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 30):
         pather.create(path)
         handler = TimedRotatingFileHandler(
             path,
@@ -338,9 +342,14 @@ class Logger:
         if level < self.level:
             return
 
-        # Add Header
+        # Add a gap if we are printing a dict.
+        if self.print_gap:
+            print()
+
+        # Write the Header.
         self.console_write_line(message, level, with_color)
 
+        # Write the Items.
         if data is not None:
             for k, v in data.items():
                 use_key = k

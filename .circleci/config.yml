@@ -10,11 +10,17 @@ jobs:
 
       - run:
           name: Install Project Requirements
-          command: sudo pip install -r requirements.txt
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
 
       - run:
           name: Install Testing Requirements
-          command: sudo pip install coverage codecov
+          command: |
+            . venv/bin/activate
+            pip install -r requirements.txt
+            pip install coverage codecov
 
       - run:
           name: Run Tests
@@ -25,6 +31,7 @@ jobs:
       - run:
           name: Deploy Package
           command: |
-            sudo codecov
+            . venv/bin/activate
+            codecov
             python setup.py sdist bdist_wheel
             bash ./upload_to_pypi.sh

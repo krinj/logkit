@@ -24,7 +24,9 @@ jobs:
 
       - run:
           name: Run Tests
-          command: sudo coverage run --source logmatic -m unittest tests/test_*.py
+          command: |
+            . venv/bin/activate
+            coverage run --source logmatic -m unittest tests/test_*.py
 
       - run: echo $REPO_USER
 

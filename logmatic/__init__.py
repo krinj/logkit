@@ -5,3 +5,4 @@ __email__ = "juangbhanich.k@gmail.com"
 __version__ = "0.0.0"
 
 import logmatic.log
+from logmatic.log import *

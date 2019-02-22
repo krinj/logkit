@@ -139,8 +139,6 @@ class Logger:
 
                 data[k] = None if os.environ[env_key] == "0" else str(os.environ[env_key])
 
-        print("Data Loaded", data)
-
         interval_unit = data["rotation"]["interval_unit"]
         interval_value = data["rotation"]["interval_value"]
         backup_count = data["rotation"]["backup_count"]

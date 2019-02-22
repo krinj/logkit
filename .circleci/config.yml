@@ -7,23 +7,22 @@ jobs:
 
     steps:
       - checkout
-      - setup_remote_docker
 
       - run:
           name: Install Project Requirements
-          command: pip install -r requirements.txt
+          command: sudo pip install -r requirements.txt
 
       - run:
           name: Install Testing Requirements
-          command: pip install coverage codecov
+          command: sudo pip install coverage codecov
 
       - run:
           name: Run Tests
-          command: coverage run --source gv_tools -m unittest tests/test_*.py
+          command: sudo coverage run --source gv_tools -m unittest tests/test_*.py
 
       - run:
           name: Deploy Package
           command: |
-            codecov
-            python setup.py sdist bdist_wheel
-            bash ./upload_to_pypi.sh
+            sudo codecov
+            sudo python setup.py sdist bdist_wheel
+            sudo bash ./upload_to_pypi.sh

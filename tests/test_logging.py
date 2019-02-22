@@ -11,10 +11,15 @@ class TestLogging(TestCase):
         log.get_instance().level = logging.DEBUG
         log_functions = (log.debug, log.info, log.warning, log.error, log.critical)
 
+        i = 0
+
         for f in log_functions:
-            f("Hello World")
-            f("Hello", "World")
-            f("Hello", {"target": "World"})
+            f(f"{i} Hello World")
+            i += 1
+            f(f"{i} Hello", "World")
+            i += 1
+            f(f"{i} Hello", {"target": "World"})
+            i += 1
 
     def test_datadog(self):
 

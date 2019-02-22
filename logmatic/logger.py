@@ -8,6 +8,8 @@ import json
 import logging
 import os
 import sys
+import threading
+import time
 from logging.handlers import TimedRotatingFileHandler
 from typing import Union
 
@@ -54,6 +56,12 @@ class Logger:
         # DD Integration.
         self.datadog = None
         self.dd_stats = None
+        self.dd_api_key: str = None
+        self.dd_host: str = None
+        self.dd_service: str = None
+        self.dd_http_logs_active: bool = False
+        self._dd_http_log_list: list = []
+        self._dd_is_logging: bool = False
 
         self.auto_initialize()
         self._load_config()
@@ -82,7 +90,9 @@ class Logger:
                 "active": False,
                 "api_key": None,
                 "app_key": None,
-                "host": None
+                "http_log_active": False,
+                "host": None,
+                "service": None
             }
         }
         return data
@@ -140,7 +150,12 @@ class Logger:
 
         datadog_map = data["datadog"]
         if datadog_map["active"]:
-            self._attach_datadog(datadog_map["api_key"], datadog_map["app_key"], datadog_map["host"])
+            self._attach_datadog(
+                datadog_map["api_key"],
+                datadog_map["app_key"],
+                datadog_map["http_log_active"],
+                datadog_map["host"],
+                datadog_map["service"])
 
     def _save_config_env(self, data):
         lines = []
@@ -206,23 +221,62 @@ class Logger:
     # Third Party Attachments.
     # ======================================================================================================================
 
-    def _attach_datadog(self, api_key: str, app_key: str, host: Union[None, str]=None):
+    def _attach_datadog(
+            self,
+            api_key: str,
+            app_key: str,
+            http_logs_active: bool=False,
+            host: Union[None, str]=None,
+            service: Union[None, str]=None,
+    ):
         import datadog
         self.datadog = datadog
         self.datadog.initialize(api_key=api_key, app_key=app_key, host=host)
         self.dd_stats = datadog.ThreadStats()
         self.dd_stats.start()
 
+        self.dd_api_key = api_key
+        self.dd_http_logs_active = http_logs_active
+        self.dd_host = host
+        self.dd_service = service
+
+    def _queue_dd_log(self, data):
+
+        data["service"] = self.dd_service
+        data["hostname"] = self.dd_host
+        data["date"] = time.time() * 1000
+        self._dd_http_log_list.append(data)
+        if not self._dd_is_logging:
+            threading.Thread(target=self._async_log_loop).start()
+
     def _log_to_dd(self, data):
-        data["service"] = "python-logger"
-        data["hostname"] = "python-host"
-        payload = json.dumps(data)
-        print(payload)
-        command = f"curl -X POST https://http-intake.logs.datadoghq.com/v1/input/5676cb0469c440fbbc5bef2d17ac3de4 -H 'Content-Type: application/json' -d '{payload}' &"
-        print(command)
-        os.system(
-            command
-        )
+
+        if self.dd_http_logs_active:
+
+            payload = json.dumps(data)
+            command = f"curl " \
+                      f"-X POST http://http-intake.logs.datadoghq.com/v1/input/{self.dd_api_key} " \
+                      f"-H 'Content-Type: application/json' " \
+                      f"-d '{payload}' &"
+            os.system(
+                command
+            )
+
+    def _async_log_loop(self):
+        self._dd_is_logging = True
+
+        try:
+            while True:
+                if len(self._dd_http_log_list) > 0:
+                    next_item = self._dd_http_log_list.pop(0)
+                    self._log_to_dd(next_item)
+                else:
+                    break
+
+        except Exception as e:
+            self.write("Logging Exception", {"exception": e}, level=logging.ERROR, is_internal=True)
+
+        self._dd_is_logging = False
 
     # ======================================================================================================================
     # Operational Logic
@@ -260,7 +314,7 @@ class Logger:
     # Normal Logging.
     # ======================================================================================================================
 
-    def write(self, message, data, level):
+    def write(self, message, data, level, is_internal: bool=False):
 
         # Parse the data first.
         if data is not None:
@@ -272,9 +326,9 @@ class Logger:
         if native_logging_action is not None:
             native_logging_action(message, extra={"data": data})
 
-        if self.datadog is not None:
+        if self.datadog is not None and self.dd_http_logs_active and not is_internal:
             data = {"message": message, "level": logging.getLevelName(level), "data": data}
-            self._log_to_dd(data)
+            self._queue_dd_log(data)
 
         self.console_write(message, data, level, with_color=self.use_color)
 

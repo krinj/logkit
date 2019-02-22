@@ -35,5 +35,6 @@ jobs:
           command: |
             . venv/bin/activate
             codecov
+            pip install wheel
             python setup.py sdist bdist_wheel
             bash ./upload_to_pypi.sh

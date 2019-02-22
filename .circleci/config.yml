@@ -24,5 +24,5 @@ jobs:
           name: Deploy Package
           command: |
             sudo codecov
-            sudo python setup.py sdist bdist_wheel
-            sudo bash ./upload_to_pypi.sh
+            python setup.py sdist bdist_wheel
+            bash ./upload_to_pypi.sh

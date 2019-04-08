@@ -20,14 +20,3 @@ class TestLogging(TestCase):
             i += 1
             f(f"{i} Hello", {"target": "World"})
             i += 1
-
-    def test_datadog(self):
-
-        # Increment Event
-        for i in range(50):
-            log.increment("logmatic.increment_test")
-            time.sleep(0.05)
-
-        for i in range(5):
-            log.event("Testing Event", "Event Test Content", {"tag_name": "tag_detail", "index": i})
-            time.sleep(0.05)

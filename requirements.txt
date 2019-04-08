@@ -1,5 +1,2 @@
 python-dotenv
 json-log-formatter
-
-# 3rd Party Integrations - Only enable if needed.
-# datadog

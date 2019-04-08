@@ -5,12 +5,9 @@ An instance of the Logmatic logger. Wraps the Python logger and some other 3rd-P
 """
 
 import datetime
-import json
 import logging
 import os
 import sys
-import threading
-import time
 from logging.handlers import TimedRotatingFileHandler
 from typing import Union
 
@@ -50,18 +47,11 @@ class Logger:
         self.native_logger = None
         self.native_logging_map: dict = None
         self.use_color: bool = True
-        self.level = logging.INFO
         self.print_gap: bool = True
 
-        # DD Integration.
-        self.datadog = None
-        self.dd_stats = None
-        self.dd_api_key: str = None
-        self.dd_host: str = None
-        self.dd_service: str = None
-        self.dd_http_logs_active: bool = False
-        self._dd_http_log_list: list = []
-        self._dd_is_logging: bool = False
+        # Minimum log level to print the log.
+        self.console_log_level = logging.INFO
+        self.file_log_level = logging.INFO
 
         self._auto_initialize()
         self._load_config()
@@ -87,15 +77,9 @@ class Logger:
                 "interval_value": 1,
                 "backup_count": 30
             },
-            "datadog": {
-                "active": False,
-                "api_key": None,
-                "app_key": None,
-                "http_log_active": False,
-                "host": None,
-                "service": None
-            },
-            "print_gap": 1
+            "print_gap": 1,
+            "console_log_level": "INFO",
+            "file_log_level": "INFO"
         }
         return data
 
@@ -150,14 +134,9 @@ class Logger:
         if data["json_logger"]["active"]:
             self._attach_json_logger(data["json_logger"]["path"], interval_unit, interval_value, backup_count)
 
-        datadog_map = data["datadog"]
-        if datadog_map["active"]:
-            self._attach_datadog(
-                datadog_map["api_key"],
-                datadog_map["app_key"],
-                datadog_map["http_log_active"],
-                datadog_map["host"],
-                datadog_map["service"])
+        # Set the appropriate log level.
+        self.console_log_level = logging._nameToLevel[data["console_log_level"]]
+        self.file_log_level = logging._nameToLevel[data["file_log_level"]]
 
     def _save_config_env(self, data):
         lines = []
@@ -210,7 +189,7 @@ class Logger:
     def set_native_logger(self, logger):
         # Log Level Map
         self.native_logger = logger
-        self.native_logger.setLevel(self.level)
+        self.native_logger.setLevel(self.file_log_level)
         self.native_logging_map = {
             logging.DEBUG: logger.debug,
             logging.INFO: logger.info,
@@ -218,67 +197,6 @@ class Logger:
             logging.ERROR: logger.error,
             logging.CRITICAL: logger.critical,
         } if logger is not None else {}
-
-    # ======================================================================================================================
-    # Third Party Attachments.
-    # ======================================================================================================================
-
-    def _attach_datadog(
-            self,
-            api_key: str,
-            app_key: str,
-            http_logs_active: bool=False,
-            host: Union[None, str]=None,
-            service: Union[None, str]=None,
-    ):
-        import datadog
-        self.datadog = datadog
-        self.datadog.initialize(api_key=api_key, app_key=app_key, host=host)
-        self.dd_stats = datadog.ThreadStats()
-        self.dd_stats.start()
-
-        self.dd_api_key = api_key
-        self.dd_http_logs_active = http_logs_active
-        self.dd_host = host
-        self.dd_service = service
-
-    def _queue_dd_log(self, data):
-
-        data["service"] = self.dd_service
-        data["hostname"] = self.dd_host
-        data["date"] = time.time() * 1000
-        self._dd_http_log_list.append(data)
-        if not self._dd_is_logging:
-            threading.Thread(target=self._async_log_loop).start()
-
-    def _log_to_dd(self, data):
-
-        if self.dd_http_logs_active:
-
-            payload = json.dumps(data)
-            command = f"curl " \
-                      f"-X POST http://http-intake.logs.datadoghq.com/v1/input/{self.dd_api_key} " \
-                      f"-H 'Content-Type: application/json' " \
-                      f"-d '{payload}' &"
-            os.system(
-                command
-            )
-
-    def _async_log_loop(self):
-        self._dd_is_logging = True
-
-        try:
-            while True:
-                if len(self._dd_http_log_list) > 0:
-                    next_item = self._dd_http_log_list.pop(0)
-                    self._log_to_dd(next_item)
-                else:
-                    break
-
-        except Exception as e:
-            self.write("Logging Exception", {"exception": e}, level=logging.ERROR, is_internal=True)
-
-        self._dd_is_logging = False
 
     # ======================================================================================================================
     # Operational Logic
@@ -294,24 +212,15 @@ class Logger:
         return self.native_logging_map[level]
 
     def event(self, title: str, text: str, data: dict):
-        if self.datadog is not None:
-            # Transform data into tags.
-            tags = [f"{k}:{v}" for k, v in data.items()]
-            self.datadog.api.Event.create(title=title, text=text, tags=tags)
-
         message = f"{title}: {text}"
         self.write(message, data, logging.INFO)
 
     def increment(self, metric_name: str, value: Union[float, int]):
         self.write(f"Incrementing {metric_name}: {value}", None, logging.DEBUG)
-        if self.dd_stats is not None:
-            self.dd_stats.increment(metric_name, value)
 
     def gauge(self, metric_name: str, value: Union[float, int]):
         self.write(f"Gauging {metric_name}: {value}", None, logging.DEBUG)
-        if self.dd_stats is not None:
-            self.dd_stats.gauge(metric_name, value)
-    
+
     # ======================================================================================================================
     # Normal Logging.
     # ======================================================================================================================
@@ -328,16 +237,12 @@ class Logger:
         if native_logging_action is not None:
             native_logging_action(message, extra={"data": data})
 
-        if self.datadog is not None and self.dd_http_logs_active and not is_internal:
-            data = {"message": message, "level": logging.getLevelName(level), "data": data}
-            self._queue_dd_log(data)
-
         self.console_write(message, data, level, with_color=self.use_color)
 
     def console_write(self, message, data, level, with_color: bool = False):
         """ Custom function to write message to console. """
 
-        if level < self.level:
+        if level < self.console_log_level:
             return
 
         # Add a gap if we are printing a dict.

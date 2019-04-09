@@ -29,6 +29,11 @@ class Logger:
     DEFAULT_ENV_PATH = "logmatic.env"
     COLUMN_PADDING: int = 8  # Minimum width of column when writing to console.
 
+    # Config parsing.
+    TRUE_VALUES = ("1", "on", "true")
+    FALSE_VALUES = ("0", "off", "false")
+    NULL_VALUES = ("0", "none", "null")
+
     # ======================================================================================================================
     # Singleton Access
     # ======================================================================================================================
@@ -79,9 +84,14 @@ class Logger:
             },
             "print_gap": 1,
             "console_log_level": "INFO",
-            "file_log_level": "INFO"
+            "file_log_level": "INFO",
+            "propagate": False
         }
         return data
+
+    def _append_to_env(self, key: str, value):
+        with open(self.DEFAULT_ENV_PATH, "a") as f:
+            f.write(f"{key}={value}\n")
 
     def _load_config(self):
         """
@@ -95,33 +105,43 @@ class Logger:
             self._save_config_env(data)
 
         dotenv.load_dotenv(self.DEFAULT_ENV_PATH)
+
+        # Check for missing keys and add it to the .env.
         for k, v in data.items():
             if type(v) is dict:
 
                 for k2, v2 in v.items():
                     env_key = f"{k.upper()}__{k2.upper()}"
 
+                    if env_key not in os.environ:
+                        self._append_to_env(env_key, str(v2))
+                        continue
+
                     if type(v2) is bool:
-                        data[k][k2] = True if os.environ[env_key] == "1" else False
+                        data[k][k2] = True if os.environ[env_key].lower() in self.TRUE_VALUES else False
                         continue
 
                     if type(v2) is int:
                         data[k][k2] = int(os.environ[env_key])
                         continue
 
-                    data[k][k2] = None if os.environ[env_key] == "0" else str(os.environ[env_key])
+                    data[k][k2] = None if os.environ[env_key].lower() in self.NULL_VALUES else str(os.environ[env_key])
             else:
                 env_key = f"{k.upper()}"
 
+                if env_key not in os.environ:
+                    self._append_to_env(env_key, str(v))
+                    continue
+
                 if type(v) is bool:
-                    data[k] = True if os.environ[env_key] == "1" else False
+                    data[k] = True if os.environ[env_key].lower() in self.TRUE_VALUES else False
                     continue
 
                 if type(v) is int:
                     data[k] = int(os.environ[env_key])
                     continue
 
-                data[k] = None if os.environ[env_key] == "0" else str(os.environ[env_key])
+                data[k] = None if os.environ[env_key].lower() in self.NULL_VALUES else str(os.environ[env_key])
 
         interval_unit = data["rotation"]["interval_unit"]
         interval_value = data["rotation"]["interval_value"]
@@ -137,6 +157,10 @@ class Logger:
         # Set the appropriate log level.
         self.console_log_level = logging._nameToLevel[data["console_log_level"]]
         self.file_log_level = logging._nameToLevel[data["file_log_level"]]
+
+        # Set the level of the native logger.
+        self.native_logger.setLevel(self.file_log_level)
+        self.native_logger.propagate = data["propagate"]
 
     def _save_config_env(self, data):
         lines = []
@@ -160,7 +184,7 @@ class Logger:
             f.writelines("\n".join(lines))
 
     def _auto_initialize(self):
-        self.set_native_logger(logging.getLogger("logger"))
+        self.set_native_logger(logging.getLogger("native_logger"))
 
     def _attach_json_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 30):
         pather.create(path)

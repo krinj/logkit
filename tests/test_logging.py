@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import logging
-import time
 from unittest import TestCase
 from logmatic import log
 
@@ -8,9 +7,9 @@ from logmatic import log
 class TestLogging(TestCase):
     def test_logging(self):
 
-        log.get_instance().level = logging.DEBUG
-        log_functions = (log.debug, log.info, log.warning, log.error, log.critical)
+        logging.warning("Hello World")
 
+        log_functions = (log.debug, log.info, log.warning, log.error, log.critical)
         i = 0
 
         for f in log_functions:

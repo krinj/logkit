@@ -91,7 +91,7 @@ class Logger:
 
     def _append_to_env(self, key: str, value):
         with open(self.DEFAULT_ENV_PATH, "a") as f:
-            f.write(f"{key}={value}\n")
+            f.write(f"\n{key}={value}")
 
     def _load_config(self):
         """

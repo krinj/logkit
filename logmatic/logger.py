@@ -5,6 +5,7 @@ An instance of the Logmatic logger. Wraps the Python logger and some other 3rd-P
 """
 
 import datetime
+import inspect
 import logging
 import os
 import sys
@@ -12,7 +13,6 @@ from logging.handlers import TimedRotatingFileHandler
 from typing import Union
 
 import dotenv
-from logmatic.formatter.extended_json_formatter import ExtendedJSONFormatter
 from logmatic.utils import pather
 
 __author__ = "Jakrin Juangbhanich"
@@ -20,12 +20,15 @@ __email__ = "juangbhanich.k@gmail.com"
 
 
 class Logger:
+
     # Color definitions.
     RED = '\33[31m'
     GREEN = '\33[32m'
     YELLOW = '\33[33m'
     BLUE = '\33[34m'
     DEFAULT_COLOR = '\33[0m'
+
+    # DEFAULTS
     DEFAULT_ENV_PATH = "logmatic.env"
     COLUMN_PADDING: int = 8  # Minimum width of column when writing to console.
 
@@ -49,10 +52,11 @@ class Logger:
 
     def __init__(self):
         # Native Python logging module.
-        self.native_logger = None
-        self.native_logging_map: dict = None
+        self.file_logger = None
+        self.file_logging_map: dict = None
         self.use_color: bool = True
-        self.print_gap: bool = True
+        self.human_mode: bool = False
+        self.trace: bool = True
 
         # Minimum log level to print the log.
         self.console_log_level = logging.INFO
@@ -60,6 +64,15 @@ class Logger:
 
         self._auto_initialize()
         self._load_config()
+
+        # Create the root logging map.
+        self.root_logging_map: dict = {
+            logging.DEBUG: logging.debug,
+            logging.INFO: logging.info,
+            logging.WARNING: logging.warning,
+            logging.ERROR: logging.error,
+            logging.CRITICAL: logging.critical,
+        }
 
     # ======================================================================================================================
     # Loading and Initialization
@@ -69,10 +82,6 @@ class Logger:
     def _generate_default_config() -> dict:
         """ This is the default config for the log. Generate this if no config exists. """
         data = {
-            "json_logger": {
-                "active": True,
-                "path": "./logs/output.json.log"
-            },
             "file_logger": {
                 "active": True,
                 "path": "./logs/output.log"
@@ -82,10 +91,10 @@ class Logger:
                 "interval_value": 1,
                 "backup_count": 30
             },
-            "print_gap": 1,
             "console_log_level": "INFO",
             "file_log_level": "INFO",
-            "propagate": False
+            "human_mode": False,
+            "trace": True
         }
         return data
 
@@ -146,21 +155,27 @@ class Logger:
         interval_unit = data["rotation"]["interval_unit"]
         interval_value = data["rotation"]["interval_value"]
         backup_count = data["rotation"]["backup_count"]
-        self.print_gap = data["print_gap"]
+
+        self.human_mode = data["human_mode"]
+        self.trace = data["trace"]
 
         if data["file_logger"]["active"]:
             self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value, backup_count)
-
-        if data["json_logger"]["active"]:
-            self._attach_json_logger(data["json_logger"]["path"], interval_unit, interval_value, backup_count)
 
         # Set the appropriate log level.
         self.console_log_level = logging._nameToLevel[data["console_log_level"]]
         self.file_log_level = logging._nameToLevel[data["file_log_level"]]
 
         # Set the level of the native logger.
-        self.native_logger.setLevel(self.file_log_level)
-        self.native_logger.propagate = data["propagate"]
+        self.file_logger.setLevel(self.file_log_level)
+        self.file_logger.propagate = False
+        if not self.human_mode:
+            logging.basicConfig(
+                level=self.console_log_level,
+                format='%(levelname)-9s| %(asctime)s | %(message)s',
+                datefmt='%m/%d %H:%M',
+            )
+            logging.info("Logmatic Initialized: Propagating logs to root logger and overriding root config.")
 
     def _save_config_env(self, data):
         lines = []
@@ -184,18 +199,7 @@ class Logger:
             f.writelines("\n".join(lines))
 
     def _auto_initialize(self):
-        self.set_native_logger(logging.getLogger("native_logger"))
-
-    def _attach_json_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 30):
-        pather.create(path)
-        handler = TimedRotatingFileHandler(
-            path,
-            when=interval_unit,
-            interval=interval_value,
-            backupCount=backup_count)
-        formatter = ExtendedJSONFormatter()
-        handler.setFormatter(formatter)
-        self.native_logger.addHandler(handler)
+        self.set_file_logger(logging.getLogger("native_logger"))
 
     def _attach_file_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 30):
         pather.create(path)
@@ -205,16 +209,16 @@ class Logger:
             interval=interval_value,
             backupCount=backup_count)
         formatter = logging.Formatter(
-            "%(levelname)s:%(asctime)s | %(message)s | %(data)s",
+            '%(levelname)-9s| %(asctime)s | %(message)s',
             datefmt="%Y/%m/%d:%H:%M:%S")
         handler.setFormatter(formatter)
-        self.native_logger.addHandler(handler)
+        self.file_logger.addHandler(handler)
 
-    def set_native_logger(self, logger):
+    def set_file_logger(self, logger):
         # Log Level Map
-        self.native_logger = logger
-        self.native_logger.setLevel(self.file_log_level)
-        self.native_logging_map = {
+        self.file_logger = logger
+        self.file_logger.setLevel(self.file_log_level)
+        self.file_logging_map = {
             logging.DEBUG: logger.debug,
             logging.INFO: logger.info,
             logging.WARNING: logger.warning,
@@ -226,14 +230,14 @@ class Logger:
     # Operational Logic
     # ======================================================================================================================
 
-    def _get_native_logging_action(self, level):
-        if self.native_logger is None:
+    def get_file_logging_action(self, level):
+        if self.file_logger is None:
             return None
 
-        if level not in self.native_logging_map:
+        if level not in self.file_logging_map:
             return None
 
-        return self.native_logging_map[level]
+        return self.file_logging_map[level]
 
     def event(self, title: str, text: str, data: dict):
         message = f"{title}: {text}"
@@ -257,24 +261,48 @@ class Logger:
                 message = f"{message}: {str(data)}"
                 data = None
 
-        native_logging_action = self._get_native_logging_action(level)
-        if native_logging_action is not None:
-            native_logging_action(message, extra={"data": data})
+        module_trace = self.get_parent_module() if self.trace else None
+        single_line_message = self.format_message_to_string(message, module_trace, data)
+        file_logging_action = self.get_file_logging_action(level)
+        if file_logging_action is not None:
+            file_logging_action(single_line_message)
 
-        self.console_write(message, data, level, with_color=self.use_color)
+        if self.human_mode:
+            self.console_write(message, module_trace, data, level, with_color=self.use_color)
+        else:
+            self.root_logging_map[level](single_line_message)
 
-    def console_write(self, message, data, level, with_color: bool = False):
+    @staticmethod
+    def format_message_to_string(message, module_trace, data):
+
+        strings = []
+
+        if module_trace is not None:
+            strings.append(module_trace)
+
+        strings.append(message)
+
+        if data is not None:
+            strings.append(data)
+
+        strings = map(str, strings)
+        return " | ".join(strings)
+
+    @staticmethod
+    def get_parent_module() -> str:
+        from_stack = inspect.stack()[4]
+        stack_module = inspect.getmodule(from_stack[0])
+        module_name = stack_module.__name__.split(".")[-1]
+        return f"{module_name}:{from_stack.lineno}"
+
+    def console_write(self, message, module_trace, data, level, with_color: bool = False):
         """ Custom function to write message to console. """
 
         if level < self.console_log_level:
             return
 
-        # Add a gap if we are printing a dict.
-        if self.print_gap:
-            print()
-
         # Write the Header.
-        self.console_write_line(message, level, with_color)
+        self.console_write_line(message, module_trace, level, with_color)
 
         # Write the Items.
         if data is not None:
@@ -282,11 +310,12 @@ class Logger:
                 use_key = k
                 if with_color:
                     use_key = self.set_level_color(k, level)
-                self.console_write_line(f"  {use_key}: {v}", level, with_color)
+                self.console_write_line(f"  {use_key}: {v}", module_trace, level, with_color)
 
-    def console_write_line(self, content, level, with_color: bool = False):
+    def console_write_line(self, content, module_trace, level, with_color: bool = False):
         time_str = f"{datetime.datetime.now():%H:%M}"
-        prefix = f"{logging.getLevelName(level)[:4]} {time_str}"
+        module_str = "" if module_trace is None else f" {module_trace}"
+        prefix = f"{logging.getLevelName(level)[:4]} {time_str}{module_str}"
         pad_length = max(0, self.COLUMN_PADDING - len(prefix))
         prefix += " " * pad_length
         if with_color:

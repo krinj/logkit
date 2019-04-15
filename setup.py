@@ -59,8 +59,7 @@ setuptools.setup(
     packages=find_packages_under(PACKAGE_NAME),
     package_dir={PACKAGE_NAME: PACKAGE_NAME},
     install_requires=[
-        "python-dotenv",
-        "json-log-formatter"
+        "python-dotenv"
     ],
     classifiers=[
         "Programming Language :: Python :: 3.6"

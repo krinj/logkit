@@ -13,24 +13,24 @@ __author__ = "Jakrin Juangbhanich"
 __email__ = "juangbhanich.k@gmail.com"
 
 
-def debug(message, data=None):
-    __log_with_level(message, data, logging.DEBUG)
+def debug(message, data=None, truncated: bool=False):
+    __log_with_level(message, data, logging.DEBUG, truncated)
 
 
-def info(message, data=None):
-    __log_with_level(message, data, logging.INFO)
+def info(message, data=None, truncated: bool=False):
+    __log_with_level(message, data, logging.INFO, truncated)
 
 
-def warning(message, data=None):
-    __log_with_level(message, data, logging.WARNING)
+def warning(message, data=None, truncated: bool=False):
+    __log_with_level(message, data, logging.WARNING, truncated)
 
 
-def error(message, data=None):
-    __log_with_level(message, data, logging.ERROR)
+def error(message, data=None, truncated: bool=False):
+    __log_with_level(message, data, logging.ERROR, truncated)
 
 
-def critical(message, data=None):
-    __log_with_level(message, data, logging.CRITICAL)
+def critical(message, data=None, truncated: bool=False):
+    __log_with_level(message, data, logging.CRITICAL, truncated)
 
 
 def increment(metric_name: str, value: Union[float, int]=1):
@@ -49,10 +49,6 @@ def get_instance():
     return Logger.get_instance()
 
 
-def __log_with_level(message, data, level):
+def __log_with_level(message, data, level, truncated):
     logger = Logger.get_instance()
-    logger.write(message, data, level)
-
-
-
-
+    logger.write(message, data, level, truncated)

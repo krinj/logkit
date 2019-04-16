@@ -10,18 +10,9 @@ class TestLogging(TestCase):
         log_functions = (log.debug, log.info, log.warning, log.error, log.critical)
         i = 0
 
-        for f in log_functions:
-            f(f"{i} Hello World")
-            i += 1
-            f(f"{i} Hello", "World")
-            i += 1
-            f(f"{i} Hello", {"target": "World"})
-            i += 1
-
-    def test_native_override(self):
-
-        log_functions = (log.debug, log.info, log.warning, log.error, log.critical)
-        i = 0
+        busy_data = {}
+        for j in range(1000):
+            busy_data[f"key_{j}"] = j
 
         for f in log_functions:
             f(f"{i} Hello World")
@@ -29,4 +20,6 @@ class TestLogging(TestCase):
             f(f"{i} Hello", "World")
             i += 1
             f(f"{i} Hello", {"target": "World"})
+            i += 1
+            f(f"{i} This message should be truncated", busy_data, truncated=True)
             i += 1

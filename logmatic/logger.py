@@ -11,9 +11,9 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 from typing import Union
-
 import dotenv
 from logmatic.utils import pather
+from logmatic.utils.truncate import truncate
 
 __author__ = "Jakrin Juangbhanich"
 __email__ = "juangbhanich.k@gmail.com"
@@ -57,6 +57,8 @@ class Logger:
         self.use_color: bool = True
         self.human_mode: bool = False
         self.trace: bool = True
+        self.max_message_size = 256
+        self.max_truncated_elements = 3
 
         # Minimum log level to print the log.
         self.console_log_level = logging.INFO
@@ -94,7 +96,9 @@ class Logger:
             "console_log_level": "INFO",
             "file_log_level": "INFO",
             "human_mode": False,
-            "trace": True
+            "trace": True,
+            "max_message_size": 256,
+            "max_truncated_elements": 3
         }
         return data
 
@@ -158,6 +162,8 @@ class Logger:
 
         self.human_mode = data["human_mode"]
         self.trace = data["trace"]
+        self.max_message_size = data["max_message_size"]
+        self.max_truncated_elements = data["max_truncated_elements"]
 
         if data["file_logger"]["active"]:
             self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value, backup_count)
@@ -210,7 +216,7 @@ class Logger:
             backupCount=backup_count)
         formatter = logging.Formatter(
             '%(levelname)-9s| %(asctime)s | %(message)s',
-            datefmt="%Y/%m/%d:%H:%M:%S")
+            datefmt="%m/%d %H:%M")
         handler.setFormatter(formatter)
         self.file_logger.addHandler(handler)
 
@@ -253,22 +259,28 @@ class Logger:
     # Normal Logging.
     # ======================================================================================================================
 
-    def write(self, message, data, level, is_internal: bool=False):
+    def write(self, message, data, level, truncated: bool=True):
 
         # Parse the data first.
+        data_string = None
         if data is not None:
             if type(data) is not dict:
                 message = f"{message}: {str(data)}"
                 data = None
+            else:
+                if truncated:
+                    data_string = truncate(str(data), self.max_message_size)
+                else:
+                    data_string = str(data)
 
         module_trace = self.get_parent_module() if self.trace else None
-        single_line_message = self.format_message_to_string(message, module_trace, data)
+        single_line_message = self.format_message_to_string(message, module_trace, data_string)
         file_logging_action = self.get_file_logging_action(level)
         if file_logging_action is not None:
             file_logging_action(single_line_message)
 
         if self.human_mode:
-            self.console_write(message, module_trace, data, level, with_color=self.use_color)
+            self.console_write(message, module_trace, data, level, with_color=self.use_color, truncated=truncated)
         else:
             self.root_logging_map[level](single_line_message)
 
@@ -295,7 +307,7 @@ class Logger:
         module_name = stack_module.__name__.split(".")[-1]
         return f"{module_name}:{from_stack.lineno}"
 
-    def console_write(self, message, module_trace, data, level, with_color: bool = False):
+    def console_write(self, message, module_trace, data, level, with_color: bool = False, truncated: bool=False):
         """ Custom function to write message to console. """
 
         if level < self.console_log_level:
@@ -304,13 +316,23 @@ class Logger:
         # Write the Header.
         self.console_write_line(message, module_trace, level, with_color)
 
+        # Prepare the truncation limits.
+        n_elements = 0
+
         # Write the Items.
         if data is not None:
             for k, v in data.items():
-                use_key = k
-                if with_color:
-                    use_key = self.set_level_color(k, level)
-                self.console_write_line(f"  {use_key}: {v}", module_trace, level, with_color)
+                if truncated and n_elements > self.max_truncated_elements:
+                    self.console_write_line(f"  + {len(data) - n_elements} more elements...",
+                                            module_trace, level, with_color)
+                    break
+                else:
+                    n_elements += 1
+                    use_key = k
+                    if with_color:
+                        use_key = self.set_level_color(k, level)
+                    data_string = truncate(str(v), self.max_message_size) if truncated else str(v)
+                    self.console_write_line(f"  {use_key}: {data_string}", module_trace, level, with_color)
 
     def console_write_line(self, content, module_trace, level, with_color: bool = False):
         time_str = f"{datetime.datetime.now():%H:%M}"

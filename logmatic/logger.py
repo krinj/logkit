@@ -178,7 +178,9 @@ class Logger:
         if not self.human_mode:
             logging.basicConfig(
                 level=self.console_log_level,
-                stream=sys.stdout
+                stream=sys.stdout,
+                format='%(levelname)s::%(asctime)s::%(message)s',
+                datefmt="%Y-%m-%dT%H:%M:%S"
             )
             logging.info("Logmatic Initialized: Propagating logs to root logger and overriding root config.")
 
@@ -214,8 +216,8 @@ class Logger:
             interval=interval_value,
             backupCount=backup_count)
         formatter = logging.Formatter(
-            '%(levelname)s:%(asctime)s:%(message)s',
-            datefmt="%m/%d-%H:%M")
+            '%(levelname)s::%(asctime)s::%(message)s',
+            datefmt="%Y-%m-%dT%H:%M:%S")
         handler.setFormatter(formatter)
         self.file_logger.addHandler(handler)
 
@@ -295,9 +297,11 @@ class Logger:
 
         if data is not None:
             strings.append(data)
+        else:
+            strings.append("{}")
 
         strings = map(str, strings)
-        return " | ".join(strings)
+        return "::".join(strings)
 
     @staticmethod
     def get_parent_module() -> str:

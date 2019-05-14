@@ -214,8 +214,8 @@ class Logger:
             interval=interval_value,
             backupCount=backup_count)
         formatter = logging.Formatter(
-            '%(levelname)-9s| %(asctime)s | %(message)s',
-            datefmt="%m/%d %H:%M")
+            '%(levelname)s:%(asctime)s:%(message)s',
+            datefmt="%m/%d-%H:%M")
         handler.setFormatter(formatter)
         self.file_logger.addHandler(handler)
 

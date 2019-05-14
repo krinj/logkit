@@ -177,9 +177,8 @@ class Logger:
         self.file_logger.propagate = False
         if not self.human_mode:
             logging.basicConfig(
-                level=self.console_log_level
-                # format='%(levelname)-9s| %(asctime)s | %(message)s',
-                # datefmt='%m/%d %H:%M',
+                level=self.console_log_level,
+                stream=sys.stdout
             )
             logging.info("Logmatic Initialized: Propagating logs to root logger and overriding root config.")
 

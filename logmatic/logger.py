@@ -23,6 +23,7 @@ __email__ = "juangbhanich.k@gmail.com"
 class Logger:
 
     # Color definitions.
+    BLACK = '\33[30m'
     RED = '\33[31m'
     GREEN = '\33[32m'
     YELLOW = '\33[33m'
@@ -37,6 +38,9 @@ class Logger:
     TRUE_VALUES = ("1", "on", "true")
     FALSE_VALUES = ("0", "off", "false")
     NULL_VALUES = ("0", "none", "null")
+
+    BOX_STEM = "├─"
+    BOX_STEM_END = "└─"
 
     # ======================================================================================================================
     # Singleton Access
@@ -65,16 +69,18 @@ class Logger:
         self.console_log_level = logging.INFO
         self.file_log_level = logging.INFO
 
+        self.native_logger = logging.getLogger('logmatic')
+
         self._auto_initialize()
         self._load_config()
 
-        # Create the root logging map.
-        self.root_logging_map: dict = {
-            logging.DEBUG: logging.debug,
-            logging.INFO: logging.info,
-            logging.WARNING: logging.warning,
-            logging.ERROR: logging.error,
-            logging.CRITICAL: logging.critical,
+        # Create the native logging map.
+        self.native_logging_map: dict = {
+            logging.DEBUG: self.native_logger.debug,
+            logging.INFO: self.native_logger.info,
+            logging.WARNING: self.native_logger.warning,
+            logging.ERROR: self.native_logger.error,
+            logging.CRITICAL: self.native_logger.critical,
         }
 
     # ======================================================================================================================
@@ -177,13 +183,15 @@ class Logger:
         self.file_logger.setLevel(self.file_log_level)
         self.file_logger.propagate = False
         if not self.human_mode:
-            logging.basicConfig(
-                level=self.console_log_level,
-                stream=sys.stdout,
-                format='%(levelname)s::%(asctime)s::%(message)s',
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(self.console_log_level)
+            formatter = logging.Formatter(
+                fmt="%(levelname)s::%(asctime)s::%(message)s",
                 datefmt="%Y-%m-%dT%H:%M:%S"
             )
-            logging.info("Logmatic Initialized: Propagating logs to root logger and overriding root config.")
+            handler.setFormatter(formatter)
+            self.native_logger.addHandler(handler)
+            self.native_logger.info("Logmatic Initialized: Propagating logs to root logger and overriding root config.")
 
     def _save_config_env(self, data):
         lines = []
@@ -247,10 +255,6 @@ class Logger:
 
         return self.file_logging_map[level]
 
-    def event(self, title: str, text: str, data: dict):
-        message = f"{title}: {text}"
-        self.write(message, data, logging.INFO)
-
     def increment(self, metric_name: str, value: Union[float, int]):
         self.write(f"Incrementing {metric_name}: {value}", None, logging.DEBUG)
 
@@ -285,7 +289,7 @@ class Logger:
         if self.human_mode:
             self.console_write(message, module_trace, data, level, with_color=self.use_color, truncated=truncated)
         else:
-            self.root_logging_map[level](single_line_message)
+            self.native_logging_map[level](single_line_message)
 
     @staticmethod
     def format_message_to_string(message, module_trace, data):
@@ -319,7 +323,7 @@ class Logger:
             return
 
         # Write the Header.
-        self.console_write_line(message, module_trace, level, with_color)
+        self.console_write_line(message, level, with_color)
 
         # Prepare the truncation limits.
         n_elements = 0
@@ -329,24 +333,33 @@ class Logger:
             for k, v in data.items():
                 if truncated and n_elements > self.max_truncated_elements:
                     self.console_write_line(f"  + {len(data) - n_elements} more elements...",
-                                            module_trace, level, with_color)
+                                            level, with_color)
                     break
                 else:
                     n_elements += 1
                     use_key = k
+                    data_string = truncate(str(v), self.max_message_size) if truncated else str(v)
+                    stem = self.BOX_STEM if n_elements < len(data) else self.BOX_STEM_END
                     if with_color:
                         use_key = self.set_level_color(k, level)
-                    data_string = truncate(str(v), self.max_message_size) if truncated else str(v)
-                    self.console_write_line(f"  {use_key}: {data_string}", module_trace, level, with_color)
+                        stem = self.set_level_color(stem, level)
+                    self.console_write_line(f"  {stem} {use_key}: {data_string}",
+                                            level, with_color)
 
-    def console_write_line(self, content, module_trace, level, with_color: bool = False):
+    def console_write_line(self, content, level, with_color: bool = False):
         time_str = f"{datetime.datetime.now():%H:%M}"
-        module_str = "" if module_trace is None else f" {module_trace}"
-        prefix = f"{logging.getLevelName(level)[:4]} {time_str}{module_str}"
+        # module_str = "" if module_trace is None else f" {module_trace}"
+
+        prefix_level = logging.getLevelName(level)[:4]
+        prefix_tail = f"{time_str}"
+
+        if with_color:
+            prefix_level = self.set_level_color(prefix_level, level)
+            prefix_tail = self.set_color(prefix_tail, self.BLACK)
+
+        prefix = f"{prefix_level} {prefix_tail}"
         pad_length = max(0, self.COLUMN_PADDING - len(prefix))
         prefix += " " * pad_length
-        if with_color:
-            prefix = self.set_level_color(prefix, level)
         content = f"{prefix}  {content}"
         print(content)
         sys.stdout.flush()

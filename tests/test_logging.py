@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import random
 from unittest import TestCase
 from logmatic import log
@@ -6,6 +7,9 @@ from logmatic import log
 
 class TestLogging(TestCase):
     def test_logging(self):
+
+        logging.warning("This is a native logging output.")
+        print("This is a native print output.")
 
         log_functions = (log.debug, log.info, log.warning, log.error, log.critical)
         i = 0
@@ -23,3 +27,5 @@ class TestLogging(TestCase):
             i += 1
             f(f"{i} Payload", {"rooples": i, "schmeckles": [1, 2, 3], "rand": random.random()})
             i += 1
+
+        logging.warning("This is another native logging output.")

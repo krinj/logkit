@@ -183,6 +183,8 @@ class Logger:
         self.file_logger.setLevel(self.file_log_level)
         self.file_logger.propagate = False
         if not self.human_mode:
+            self.native_logger.propagate = False
+            self.native_logger.setLevel(self.console_log_level)
             handler = logging.StreamHandler(sys.stdout)
             handler.setLevel(self.console_log_level)
             formatter = logging.Formatter(

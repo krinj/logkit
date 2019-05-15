@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import random
 from unittest import TestCase
 from logmatic import log
 
@@ -21,5 +21,5 @@ class TestLogging(TestCase):
             i += 1
             f(f"{i} Hello", {"target": "World"})
             i += 1
-            f(f"{i} This message should be truncated", busy_data, truncated=True)
+            f(f"{i} Payload", {"rooples": i, "schmeckles": [1, 2, 3], "rand": random.random()})
             i += 1

@@ -6,6 +6,7 @@ An instance of the Logmatic logger. Wraps the Python logger and some other 3rd-P
 
 import datetime
 import inspect
+import json
 import logging
 import os
 import sys
@@ -217,7 +218,7 @@ class Logger:
             backupCount=backup_count)
         formatter = logging.Formatter(
             '%(levelname)s::%(asctime)s::%(message)s',
-            datefmt="%Y-%m-%dT%H:%M:%S")
+            datefmt="%Y-%m-%dT%H:%M:%S%z")
         handler.setFormatter(formatter)
         self.file_logger.addHandler(handler)
 
@@ -260,7 +261,7 @@ class Logger:
     # Normal Logging.
     # ======================================================================================================================
 
-    def write(self, message, data, level, truncated: bool=True):
+    def write(self, message, data, level, truncated: bool=False):
 
         # Parse the data first.
         data_string = None
@@ -269,10 +270,11 @@ class Logger:
                 message = f"{message}: {str(data)}"
                 data = None
             else:
+                data_json = json.dumps(data)
                 if truncated:
-                    data_string = truncate(str(data), self.max_message_size)
+                    data_string = truncate(data_json, self.max_message_size)
                 else:
-                    data_string = str(data)
+                    data_string = data_json
 
         module_trace = self.get_parent_module() if self.trace else None
         single_line_message = self.format_message_to_string(message, module_trace, data_string)

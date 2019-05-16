@@ -12,7 +12,10 @@ import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 from typing import Union
+
 import dotenv
+
+from logmatic.socket_logger import SocketLogger
 from logmatic.utils import pather
 from logmatic.utils.truncate import truncate
 
@@ -39,6 +42,9 @@ class Logger:
     FALSE_VALUES = ("0", "off", "false")
     NULL_VALUES = ("0", "none", "null")
 
+    ISO_TIME_FMT = "%Y-%m-%dT%H:%M:%S%z"
+    LOG_FMT = "%(levelname)s::%(asctime)s::%(message)s"
+
     BOX_STEM = "├─"
     BOX_STEM_END = "└─"
 
@@ -59,9 +65,12 @@ class Logger:
         # Native Python logging module.
         self.file_logger = None
         self.file_logging_map: dict = None
+
+        self.socket_logger: SocketLogger = None
+
         self.use_color: bool = True
         self.human_mode: bool = False
-        self.trace: bool = True
+
         self.max_message_size = 256
         self.max_truncated_elements = 3
 
@@ -91,19 +100,29 @@ class Logger:
     def _generate_default_config() -> dict:
         """ This is the default config for the log. Generate this if no config exists. """
         data = {
+
             "file_logger": {
                 "active": True,
                 "path": "./logs/output.log"
             },
+
+
             "rotation": {
                 "interval_unit": "d",
                 "interval_value": 1,
                 "backup_count": 30
             },
+
+            "socket_logger": {
+                "active": False,
+                "host": "127.0.0.1",
+                "port": 5000
+            },
+
+
             "console_log_level": "INFO",
             "file_log_level": "INFO",
             "human_mode": False,
-            "trace": True,
             "max_message_size": 256,
             "max_truncated_elements": 3
         }
@@ -128,6 +147,7 @@ class Logger:
 
         # Check for missing keys and add it to the .env.
         for k, v in data.items():
+
             if type(v) is dict:
 
                 for k2, v2 in v.items():
@@ -168,12 +188,17 @@ class Logger:
         backup_count = data["rotation"]["backup_count"]
 
         self.human_mode = data["human_mode"]
-        self.trace = data["trace"]
         self.max_message_size = data["max_message_size"]
         self.max_truncated_elements = data["max_truncated_elements"]
 
         if data["file_logger"]["active"]:
             self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value, backup_count)
+
+        if data["socket_logger"]["active"]:
+            self.socket_logger = SocketLogger(
+                host=data["socket_logger"]["host"],
+                port=data["socket_logger"]["port"]
+            )
 
         # Set the appropriate log level.
         self.console_log_level = logging._nameToLevel[data["console_log_level"]]
@@ -188,8 +213,8 @@ class Logger:
             handler = logging.StreamHandler(sys.stdout)
             handler.setLevel(self.console_log_level)
             formatter = logging.Formatter(
-                fmt="%(levelname)s::%(asctime)s::%(message)s",
-                datefmt="%Y-%m-%dT%H:%M:%S%z"
+                fmt=self.LOG_FMT,
+                datefmt=self.ISO_TIME_FMT
             )
             handler.setFormatter(formatter)
             self.native_logger.addHandler(handler)
@@ -227,8 +252,8 @@ class Logger:
             interval=interval_value,
             backupCount=backup_count)
         formatter = logging.Formatter(
-            '%(levelname)s::%(asctime)s::%(message)s',
-            datefmt="%Y-%m-%dT%H:%M:%S%z")
+            self.LOG_FMT,
+            datefmt=self.ISO_TIME_FMT)
         handler.setFormatter(formatter)
         self.file_logger.addHandler(handler)
 
@@ -282,14 +307,20 @@ class Logger:
                 else:
                     data_string = data_json
 
-        module_trace = self.get_parent_module() if self.trace else None
+        module_trace = self.get_parent_module()
         single_line_message = self.format_message_to_string(message, module_trace, data_string)
         file_logging_action = self.get_file_logging_action(level)
         if file_logging_action is not None:
             file_logging_action(single_line_message)
 
+        if self.socket_logger is not None:
+            time_format = datetime.datetime.now(datetime.timezone.utc).strftime(self.ISO_TIME_FMT)
+            log_level = logging.getLevelName(level).upper()
+            socket_message = f"{log_level}::{time_format}::{single_line_message}"
+            self.socket_logger.send(socket_message)
+
         if self.human_mode:
-            self.console_write(message, module_trace, data, level, with_color=self.use_color, truncated=truncated)
+            self.console_write(message, data, level, with_color=self.use_color, truncated=truncated)
         else:
             self.native_logging_map[level](single_line_message)
 
@@ -318,7 +349,7 @@ class Logger:
         module_name = stack_module.__name__.split(".")[-1]
         return f"{module_name}:{from_stack.lineno}"
 
-    def console_write(self, message, module_trace, data, level, with_color: bool = False, truncated: bool=False):
+    def console_write(self, message, data, level, with_color: bool = False, truncated: bool=False):
         """ Custom function to write message to console. """
 
         if level < self.console_log_level:

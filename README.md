@@ -1,6 +1,12 @@
 # Logmatic
 
-This is a simple logger for Python 3.6+ apps. It wraps the Python logging library with some default configs, and has optional integration for 3rd party logging systems.
+This is a simple logging package for Python 3.6. It wraps the native logging library with some additional features:
+
+* Adds an additional field to each log, which can be empty, or provided with a `dict` data. It will log each key pair value with that message.
+* Provides some easy default configurations for rotating file logs.
+* Formats logs so that they can be easily ingested by a Logstash grok/json filter for Elasticsearch.
+* Provides option to send messages directly over a TCP socket.
+* Provides option to format logs with color and human readable layout.
 
 ## Quick Start Guide
 
@@ -8,10 +14,13 @@ This is a simple logger for Python 3.6+ apps. It wraps the Python logging librar
 from logmatic import log
 
 # Log some normal information.
-log.info("Hello World")
+log.info("Hello World!")
 
 # Add some arbitrary data.
-log.info("Hello World", {"greeting_count": 1})
+log.info("Some Data", {"greeting_count": 1, "schmeckles": [1, 2, 3], "lang": "EN"})
+
+# DEBUG: For extremely verbose things, that you will only need occasionally.
+log.debug("My left stroke just went viral.")
 
 # WARNING: For things that aren't breaking, but should be avoided.
 log.warning("Be careful!")
@@ -20,36 +29,77 @@ log.warning("Be careful!")
 log.error("This is an error.")
 
 # CRITICAL: This is for something major that will cause a system failure.
-log.critical("We are on fire.")
+log.critical("OMG. We are on fire.")
 ```
 
-```python
-# Metric Logging: DataDog integration.
-log.increment("my_app.my_metric_name", 1)
-log.gauge("my_app.another_metric", 0.786)
+This is what the output looks like in **Human Readable** mode (`HUMAN_MODE=1`):
+
+![log_colors](images/log_colors.png)
+
+This is what the output looks like without human mode, and also in the files:
+
 ```
+INFO::2019-05-17T14:01:37+0800::test_logging:14::Hello World!::{}
+INFO::2019-05-17T14:01:37+0800::test_logging:17::Some Data::{"greeting_count": 1, "schmeckles": [1, 2, 3], "lang": "EN"}
+DEBUG::2019-05-17T14:01:37+0800::test_logging:20::My left stroke just went viral.::{}
+WARNING::2019-05-17T14:01:37+0800::test_logging:23::Be careful!::{}
+ERROR::2019-05-17T14:01:37+0800::test_logging:26::This is an error.::{}
+CRITICAL::2019-05-17T14:01:37+0800::test_logging:29::OMG. We are on fire.::{}
+```
+
+## Logstash Ingesting
+
+The logs can be ingested and transformed by Logstash into Elasticsearch for more advanced visualization and record keeping.
+
+To parse this format you will need to use this grok filter pattern:
+
+```
+"%{LOGLEVEL:log-level}::%{TIMESTAMP_ISO8601:log-timestamp}::%{GREEDYDATA:tracer}::%{GREEDYDATA:message}::%{GREEDYDATA:raw_data}"
+```
+
+Next you will also need a JSON filter to extract the data from `raw_data`:
+
+```
+json {
+	skip_on_invalid_json => true
+	source => "raw_data"
+	target => "data"
+	remove_field => "raw_data"
+}
+```
+
+Also, there are several input methods to Logstash. In the Docker ELK link below, it simply exposes a TCP port on 5000. So in this package, we also have a very simple socket handler which can be enabled in the `logmatic.env` file. This will cause all messages to also be sent to the socket via TCP.
+
+If set up properly, we should be able to analyse and visualize the logging data easily from the Kibana dashboard.
+
+![logstash_dashboard](images/logstash_dashboard.png)
+
+Read more: [Logstash](https://www.elastic.co/guide/en/logstash/current/getting-started-with-logstash.html) | [Getting Started with ELK](https://www.elastic.co/blog/getting-started-with-elk) | [Docker ELK](https://github.com/deviantony/docker-elk) | [Logstash Input Plugins](https://www.elastic.co/guide/en/logstash/6.7/input-plugins.html)
 
 ## ENV Setup
 
+When you first run the logger, it will look for a `logmatic.env` file to set up its configuration. If it cannot find one, it will create one.
+
+The file has the values below:
+
 ```bash
-# In logmatic.env
-JSON_LOGGER__ACTIVE=1
-JSON_LOGGER__PATH=./logs/output.json.log
+# This controls whether we should log the results to a file as well.
+FILE_LOGGER__ACTIVE=1  # Either 0 or 1
+FILE_LOGGER__PATH=./logs/output.log  # Where to save the log
+ROTATION__INTERVAL_UNIT=d  # The unit of time to rotate the logs (d, h, m, etc).
+ROTATION__INTERVAL_VALUE=1  # The value of time to rotate the logs.
+ROTATION__BACKUP_COUNT=30  # How many back-ups to keep.
 
-FILE_LOGGER__ACTIVE=1
-FILE_LOGGER__PATH=./logs/output.logUpdate
+# If enabled, this will also send all log messages to a socket.
+SOCKET_LOGGER__ACTIVE=0  # Either 0 or 1
+SOCKET_LOGGER__HOST=127.0.0.1
+SOCKET_LOGGER__PORT=5000
 
-ROTATION__INTERVAL_UNIT=d
-ROTATION__INTERVAL_VALUE=1
-ROTATION__BACKUP_COUNT=30
+# The log level to use for the console/application and file logs.
+# Values: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+CONSOLE_LOG_LEVEL=INFO
+FILE_LOG_LEVEL=INFO
 
-# For DD integration. 
-DATADOG__ACTIVE=0  # 0 | 1
-DATADOG__API_KEY=REDACTED
-DATADOG__APP_KEY=REDACTED
-DATADOG__HTTP_LOG_ACTIVE=0 # 0 | 1
-DATADOG__HOST=logmatic-tests
-DATADOG__SERVICE=logmatic-tests
-
-PRINT_GAP=1
+# If enabled, this will format the terminal output to be more human readable.
+HUMAN_MODE=1
 ```

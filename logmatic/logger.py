@@ -122,9 +122,7 @@ class Logger:
 
             "console_log_level": "INFO",
             "file_log_level": "INFO",
-            "human_mode": False,
-            "max_message_size": 256,
-            "max_truncated_elements": 3
+            "human_mode": False
         }
         return data
 
@@ -188,8 +186,6 @@ class Logger:
         backup_count = data["rotation"]["backup_count"]
 
         self.human_mode = data["human_mode"]
-        self.max_message_size = data["max_message_size"]
-        self.max_truncated_elements = data["max_truncated_elements"]
 
         if data["file_logger"]["active"]:
             self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value, backup_count)
@@ -301,11 +297,7 @@ class Logger:
                 message = f"{message}: {str(data)}"
                 data = None
             else:
-                data_json = json.dumps(data)
-                if truncated:
-                    data_string = truncate(data_json, self.max_message_size)
-                else:
-                    data_string = data_json
+                data_string = json.dumps(data)
 
         module_trace = self.get_parent_module()
         single_line_message = self.format_message_to_string(message, module_trace, data_string)
@@ -320,6 +312,7 @@ class Logger:
             self.socket_logger.send(socket_message)
 
         if self.human_mode:
+            # Only human readable messages are truncated.
             self.console_write(message, data, level, with_color=self.use_color, truncated=truncated)
         else:
             self.native_logging_map[level](single_line_message)

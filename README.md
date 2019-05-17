@@ -10,6 +10,18 @@ This is a simple logging package for Python 3.6. It wraps the native logging lib
 
 ## Quick Start Guide
 
+Install logmatic:
+
+```bash
+pip install logmatic
+
+# Or specify the PyPI index:
+pip install --index-url https://pypi.org/simple/ logmatic --upgrade
+
+```
+
+In a Python script...
+
 ```python
 from logmatic import log
 

@@ -10,8 +10,10 @@ import json
 import logging
 import os
 import sys
+import time
 from logging.handlers import TimedRotatingFileHandler
 from typing import Union
+import shutil
 
 import dotenv
 
@@ -26,7 +28,7 @@ __email__ = "juangbhanich.k@gmail.com"
 class Logger:
 
     # Color definitions.
-    BLACK = '\33[30m'
+    BLACK = '\33[90m'
     RED = '\33[31m'
     GREEN = '\33[32m'
     YELLOW = '\33[33m'
@@ -48,6 +50,9 @@ class Logger:
     BOX_STEM = "├─"
     BOX_STEM_END = "└─"
     LOG_BULLET = "┃"
+    H_BAR = "─"
+    H_BAR_BULLET = "┠"
+    TIME_BAR_INTERVAL = 60  # A minute between each bar print.
 
     # ======================================================================================================================
     # Singleton Access
@@ -80,6 +85,9 @@ class Logger:
         self.file_log_level = logging.INFO
 
         self.native_logger = logging.getLogger('logmatic')
+
+        # Time bar management.
+        self.last_bar_time = 0
 
         self._auto_initialize()
         self._load_config()
@@ -289,6 +297,28 @@ class Logger:
     # Normal Logging.
     # ======================================================================================================================
 
+    def write_time_bar(self):
+        if time.time() - self.last_bar_time >= self.TIME_BAR_INTERVAL:
+            time_str = f"{datetime.datetime.now():%a, %d %b %H:%M}"
+            self.write_with_divider(time_str)
+            self.last_bar_time = time.time()
+
+    def write_with_divider(self, message):
+        cols, rows = shutil.get_terminal_size(fallback=(80, 456))
+        content_length = len(message) + 2
+        half_size = (cols - content_length) // 2
+        left_side = self.set_color(self.H_BAR_BULLET + self.H_BAR * (half_size - 1), self.BLACK)
+
+        right_side = self.H_BAR * half_size
+        if content_length % 2 != 0:
+            right_side += self.H_BAR
+        right_side = self.set_color(right_side, self.BLACK)
+        message = self.set_color(message, self.BLACK)
+
+        formatted_message = f"{left_side} {message} {right_side}"
+        print(formatted_message)
+        sys.stdout.flush()
+
     def write(self, message, data, level, truncated: bool=False):
 
         # Parse the data first.
@@ -349,6 +379,9 @@ class Logger:
         if level < self.console_log_level:
             return
 
+        # Check and write the time bar.
+        self.write_time_bar()
+
         # Write the Header.
         self.console_write_line(message, level, with_color)
 
@@ -374,20 +407,18 @@ class Logger:
                                             level, with_color)
 
     def console_write_line(self, content, level, with_color: bool = False):
-        time_str = f"{datetime.datetime.now():%H:%M}"
-        # module_str = "" if module_trace is None else f" {module_trace}"
 
-        prefix_level = self.LOG_BULLET  #  logging.getLevelName(level)[:4]
-        prefix_tail = f"{time_str}"
+        prefix_level = self.LOG_BULLET
+        prefix_tail = f""
 
         if with_color:
             prefix_level = self.set_level_color(prefix_level, level)
-            prefix_tail = self.set_color(prefix_tail, self.BLACK)
+            prefix_tail = self.set_level_color(prefix_tail, level)
 
         prefix = f"{prefix_level} {prefix_tail}"
         pad_length = max(0, self.COLUMN_PADDING - len(prefix))
         prefix += " " * pad_length
-        content = f"{prefix}  {content}"
+        content = f"{prefix} {content}"
         print(content)
         sys.stdout.flush()
 

@@ -33,6 +33,11 @@ def critical(message, data=None, truncated: bool=False):
     __log_with_level(message, data, logging.CRITICAL, truncated)
 
 
+def with_divider(message):
+    logger = Logger.get_instance()
+    logger.write_with_divider(message)
+
+
 def increment(metric_name: str, value: Union[float, int]=1):
     get_instance().increment(metric_name, value)
 

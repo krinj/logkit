@@ -47,6 +47,7 @@ class Logger:
 
     BOX_STEM = "├─"
     BOX_STEM_END = "└─"
+    LOG_BULLET = "┃"
 
     # ======================================================================================================================
     # Singleton Access
@@ -376,7 +377,7 @@ class Logger:
         time_str = f"{datetime.datetime.now():%H:%M}"
         # module_str = "" if module_trace is None else f" {module_trace}"
 
-        prefix_level = logging.getLevelName(level)[:4]
+        prefix_level = self.LOG_BULLET  #  logging.getLevelName(level)[:4]
         prefix_tail = f"{time_str}"
 
         if with_color:

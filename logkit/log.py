@@ -7,7 +7,7 @@ with lazy loading, and to be configured via the generated .env file.
 
 import logging
 from typing import Union
-from logmatic.logger import Logger
+from logkit.logger import Logger
 
 __author__ = "Jakrin Juangbhanich"
 __email__ = "juangbhanich.k@gmail.com"

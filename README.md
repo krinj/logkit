@@ -1,4 +1,4 @@
-# Logmatic
+# LogKit
 
 This is a simple logging package for Python 3.6. It wraps the native logging library with some additional features:
 
@@ -10,20 +10,20 @@ This is a simple logging package for Python 3.6. It wraps the native logging lib
 
 ## Quick Start Guide
 
-Install logmatic:
+Install logkit:
 
 ```bash
-pip install logmatic
+pip install logkit
 
 # Or specify the PyPI index:
-pip install --index-url https://pypi.org/simple/ logmatic --upgrade
+pip install --index-url https://pypi.org/simple/ logkit --upgrade
 
 ```
 
 In a Python script...
 
 ```python
-from logmatic import log
+from logkit import log
 
 # Log some normal information.
 log.info("Hello World!")
@@ -80,7 +80,7 @@ json {
 }
 ```
 
-Also, there are several input methods to Logstash. In the Docker ELK link below, it simply exposes a TCP port on 5000. So in this package, we also have a very simple socket handler which can be enabled in the `logmatic.env` file. This will cause all messages to also be sent to the socket via TCP.
+Also, there are several input methods to Logstash. In the Docker ELK link below, it simply exposes a TCP port on 5000. So in this package, we also have a very simple socket handler which can be enabled in the `logkit.env` file. This will cause all messages to also be sent to the socket via TCP.
 
 If set up properly, we should be able to analyse and visualize the logging data easily from the Kibana dashboard.
 
@@ -90,7 +90,7 @@ Read more: [Logstash](https://www.elastic.co/guide/en/logstash/current/getting-s
 
 ## ENV Setup
 
-When you first run the logger, it will look for a `logmatic.env` file to set up its configuration. If it cannot find one, it will create one.
+When you first run the logger, it will look for a `logkit.env` file to set up its configuration. If it cannot find one, it will create one.
 
 The file has the values below:
 

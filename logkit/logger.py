@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-An instance of the Logmatic logger. Wraps the Python logger and some other 3rd-P integrations.
+An instance of the Logkit logger. Wraps the Python logger and some other 3rd-P integrations.
 """
 
 import datetime
@@ -17,9 +17,9 @@ import shutil
 
 import dotenv
 
-from logmatic.socket_logger import SocketLogger
-from logmatic.utils import pather
-from logmatic.utils.truncate import truncate
+from logkit.socket_logger import SocketLogger
+from logkit.utils import pather
+from logkit.utils.truncate import truncate
 
 __author__ = "Jakrin Juangbhanich"
 __email__ = "juangbhanich.k@gmail.com"
@@ -36,7 +36,7 @@ class Logger:
     DEFAULT_COLOR = '\33[0m'
 
     # DEFAULTS
-    DEFAULT_ENV_PATH = "logmatic.env"
+    DEFAULT_ENV_PATH = "logkit.env"
     COLUMN_PADDING: int = 8  # Minimum width of column when writing to console.
 
     # Config parsing.
@@ -84,7 +84,7 @@ class Logger:
         self.console_log_level = logging.INFO
         self.file_log_level = logging.INFO
 
-        self.native_logger = logging.getLogger('logmatic')
+        self.native_logger = logging.getLogger('logkit')
 
         # Time bar management.
         self.last_bar_time = 0
@@ -223,7 +223,7 @@ class Logger:
             )
             handler.setFormatter(formatter)
             self.native_logger.addHandler(handler)
-            self.native_logger.info("Logmatic Initialized: Propagating logs to root logger and overriding root config.")
+            self.native_logger.info("LogKit Initialized: Propagating logs to root logger and overriding root config.")
 
     def _save_config_env(self, data):
         lines = []

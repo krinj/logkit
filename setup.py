@@ -9,9 +9,9 @@ import setuptools
 
 AUTHOR = "Jakrin Juangbhanich"
 EMAIL = "juangbhanich.k@gmail.com"
-PACKAGE_NAME = "logmatic"
+PACKAGE_NAME = "logkit"
 DESCRIPTION = "Basic logging wrapper for Python."
-REPO = "https://github.com/krinj/logmatic"
+REPO = "https://github.com/krinj/logkit"
 
 # ======================================================================================================================
 # Automatic Package Setup Script.

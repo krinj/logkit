@@ -2,7 +2,7 @@
 import logging
 import random
 from unittest import TestCase
-from logmatic import log
+from logkit import log
 
 
 class TestLogging(TestCase):

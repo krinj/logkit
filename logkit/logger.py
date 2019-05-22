@@ -111,7 +111,7 @@ class Logger:
         data = {
 
             "file_logger": {
-                "active": True,
+                "active": False,
                 "path": "./logs/output.log"
             },
 
@@ -131,7 +131,7 @@ class Logger:
 
             "console_log_level": "INFO",
             "file_log_level": "INFO",
-            "human_mode": False
+            "human_mode": True
         }
         return data
 

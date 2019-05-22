@@ -37,7 +37,7 @@ class Logger:
 
     # DEFAULTS
     DEFAULT_ENV_PATH = "logkit.env"
-    COLUMN_PADDING: int = 8  # Minimum width of column when writing to console.
+    COLUMN_PADDING: int = 2  # Minimum width of column when writing to console.
 
     # Config parsing.
     TRUE_VALUES = ("1", "on", "true")

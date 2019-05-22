@@ -10,11 +10,6 @@ class TestLogging(TestCase):
 
         print()
 
-        log.with_divider("This is a divider!")
-        log.with_divider("A")
-        log.with_divider("AA")
-        log.with_divider("AAA")
-
         # Log some normal information.
         log.info("Hello World!")
 

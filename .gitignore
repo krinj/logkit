@@ -10,3 +10,5 @@ logs/
 tests/logmatic\.env
 
 logmatic\.env
+
+*.env

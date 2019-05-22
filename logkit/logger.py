@@ -408,17 +408,18 @@ class Logger:
 
     def console_write_line(self, content, level, with_color: bool = False):
 
-        prefix_level = self.LOG_BULLET
-        prefix_tail = f""
-
-        if with_color:
-            prefix_level = self.set_level_color(prefix_level, level)
-            prefix_tail = self.set_level_color(prefix_tail, level)
-
-        prefix = f"{prefix_level} {prefix_tail}"
+        prefix = self.LOG_BULLET
         pad_length = max(0, self.COLUMN_PADDING - len(prefix))
         prefix += " " * pad_length
-        content = f"{prefix} {content}"
+
+        if with_color:
+            if level > logging.INFO:
+                content = f"{prefix} {content}"
+                content = self.set_level_color(content, level)
+            else:
+                prefix = self.set_level_color(prefix, level)
+                content = f"{prefix} {content}"
+
         print(content)
         sys.stdout.flush()
 

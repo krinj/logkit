@@ -33,6 +33,7 @@ class Logger:
     GREEN = '\33[32m'
     YELLOW = '\33[33m'
     BLUE = '\33[34m'
+    PURPLE = '\33[35m'
     DEFAULT_COLOR = '\33[0m'
 
     # DEFAULTS
@@ -64,7 +65,6 @@ class Logger:
     def get_instance() -> "Logger":
         if Logger._instance is None:
             Logger._instance = Logger()
-            Logger._instance._auto_initialize()
         return Logger._instance
 
     def __init__(self):
@@ -74,7 +74,8 @@ class Logger:
 
         self.socket_logger: SocketLogger = None
 
-        self.use_color: bool = True
+        self.with_color: bool = True
+        self.with_level_prefix: bool = True
         self.human_mode: bool = False
 
         self.max_message_size = 256
@@ -89,7 +90,6 @@ class Logger:
         # Time bar management.
         self.last_bar_time = 0
 
-        self._auto_initialize()
         self._load_config()
 
         # Create the native logging map.
@@ -110,28 +110,34 @@ class Logger:
         """ This is the default config for the log. Generate this if no config exists. """
         data = {
 
+            "#1": "\n# If we should automatically write logs to disk.",
             "file_logger": {
-                "active": True,
+                "active": False,
                 "path": "./logs/output.log"
             },
 
-
+            "#2": "\n# Settings for rotating the disk logs.",
             "rotation": {
                 "interval_unit": "d",
                 "interval_value": 1,
                 "backup_count": 30
             },
 
+            "#3": "\n# If we should automatically log to a socket.",
             "socket_logger": {
                 "active": False,
                 "host": "127.0.0.1",
                 "port": 5000
             },
 
-
+            "#4": "\n# Log levels to display [DEBUG, INFO, WARNING, ERROR, CRITICAL]",
             "console_log_level": "INFO",
             "file_log_level": "INFO",
-            "human_mode": False
+
+            "#5": "\n# Readability settings for the console log.",
+            "human_mode": True,
+            "with_color": True,
+            "with_level_prefix": False
         }
         return data
 
@@ -154,6 +160,9 @@ class Logger:
 
         # Check for missing keys and add it to the .env.
         for k, v in data.items():
+
+            if "#" in k:
+                continue
 
             if type(v) is dict:
 
@@ -190,14 +199,23 @@ class Logger:
 
                 data[k] = None if os.environ[env_key].lower() in self.NULL_VALUES else str(os.environ[env_key])
 
+        self.human_mode = data["human_mode"]
+        self.with_color = data["with_color"]
+        self.with_level_prefix = data["with_level_prefix"]
+
+        # Set the appropriate log level.
+        self.console_log_level = logging._nameToLevel[data["console_log_level"]]
+        self.file_log_level = logging._nameToLevel[data["file_log_level"]]
+
         interval_unit = data["rotation"]["interval_unit"]
         interval_value = data["rotation"]["interval_value"]
         backup_count = data["rotation"]["backup_count"]
 
-        self.human_mode = data["human_mode"]
-
         if data["file_logger"]["active"]:
+            self.set_file_logger(logging.getLogger("logkit_file_logger"))
             self._attach_file_logger(data["file_logger"]["path"], interval_unit, interval_value, backup_count)
+            self.file_logger.setLevel(self.file_log_level)
+            self.file_logger.propagate = False
 
         if data["socket_logger"]["active"]:
             self.socket_logger = SocketLogger(
@@ -205,13 +223,7 @@ class Logger:
                 port=data["socket_logger"]["port"]
             )
 
-        # Set the appropriate log level.
-        self.console_log_level = logging._nameToLevel[data["console_log_level"]]
-        self.file_log_level = logging._nameToLevel[data["file_log_level"]]
-
         # Set the level of the native logger.
-        self.file_logger.setLevel(self.file_log_level)
-        self.file_logger.propagate = False
         if not self.human_mode:
             self.native_logger.propagate = False
             self.native_logger.setLevel(self.console_log_level)
@@ -228,26 +240,24 @@ class Logger:
     def _save_config_env(self, data):
         lines = []
         for k, v in data.items():
+
+            if "#" in k:
+                lines.append(v)
+                continue
+
             if type(v) is dict:
                 for k2, v2 in v.items():
-                    if v2 is True:
-                        v2 = 1
-                    if v2 is False or v2 is None:
+                    if v2 is None:
                         v2 = 0
                     lines.append(f"{k.upper()}__{k2.upper()}={v2}")
             else:
-                if v is True:
-                    v = 1
-                if v is False or v is None:
+                if v is None:
                     v = 0
                 lines.append(f"{k.upper()}={v}")
 
         pather.create(self.DEFAULT_ENV_PATH)
         with open(self.DEFAULT_ENV_PATH, "w") as f:
             f.writelines("\n".join(lines))
-
-    def _auto_initialize(self):
-        self.set_file_logger(logging.getLogger("native_logger"))
 
     def _attach_file_logger(self, path, interval_unit: str = "d", interval_value: int = 1, backup_count: int = 30):
         pather.create(path)
@@ -344,7 +354,7 @@ class Logger:
 
         if self.human_mode:
             # Only human readable messages are truncated.
-            self.console_write(message, data, level, with_color=self.use_color, truncated=truncated)
+            self.console_write(message, data, level, with_color=self.with_color, truncated=truncated)
         else:
             self.native_logging_map[level](single_line_message)
 
@@ -409,6 +419,8 @@ class Logger:
     def console_write_line(self, content, level, with_color: bool = False):
 
         prefix = self.LOG_BULLET
+        if self.with_level_prefix:
+            prefix += f" {logging.getLevelName(level)[:4]}: "
         pad_length = max(0, self.COLUMN_PADDING - len(prefix))
         prefix += " " * pad_length
 
@@ -419,6 +431,8 @@ class Logger:
             else:
                 prefix = self.set_level_color(prefix, level)
                 content = f"{prefix} {content}"
+        else:
+            content = f"{prefix} {content}"
 
         print(content)
         sys.stdout.flush()
@@ -433,7 +447,7 @@ class Logger:
         if level == logging.ERROR:
             return self.set_color(content, self.RED)
         if level == logging.CRITICAL:
-            return self.set_color(content, self.RED)
+            return self.set_color(content, self.PURPLE)
         return content
 
     def set_color(self, content, color):

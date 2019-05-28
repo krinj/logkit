@@ -21,8 +21,9 @@ class SocketLogger:
             self.socket.connect((self.host, self.port))
         except Exception as e:
             logging.debug(f"Error: Unable to connect to socket: {e}")
-            self.socket.close()
-            self.socket = None
+            if self.socket is not None:
+                self.socket.close()
+                self.socket = None
 
     def close(self):
         try:

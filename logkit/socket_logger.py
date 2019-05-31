@@ -18,7 +18,7 @@ class SocketLogger:
         self.max_back_off = 64
 
         # Socket.
-        socket.setdefaulttimeout(5)
+        socket.setdefaulttimeout(15)
         self.host: str = host
         self.port: int = port
         self.socket = None
@@ -80,4 +80,4 @@ class SocketLogger:
             except Exception as e:
                 self.close()
                 logging.error(f"Error: Unable to send socket message: {e}")
-            self.backoff()
+                self.backoff()

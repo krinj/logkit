@@ -319,7 +319,7 @@ class Logger:
         half_size = (cols - content_length) // 2
         left_side = self.set_color(self.H_BAR_BULLET + self.H_BAR * (half_size - 1), self.BLACK)
 
-        right_side = self.H_BAR * half_size
+        right_side = self.H_BAR * (half_size - 1)
         if content_length % 2 != 0:
             right_side += self.H_BAR
         right_side = self.set_color(right_side, self.BLACK)

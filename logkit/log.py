@@ -6,7 +6,6 @@ with lazy loading, and to be configured via the generated .env file.
 """
 
 import logging
-from typing import Union
 from logkit.logger import Logger
 
 __author__ = "Jakrin Juangbhanich"
@@ -36,18 +35,6 @@ def critical(message, data=None, truncated: bool=False):
 def with_divider(message):
     logger = Logger.get_instance()
     logger.write_with_divider(message)
-
-
-def increment(metric_name: str, value: Union[float, int]=1):
-    get_instance().increment(metric_name, value)
-
-
-def gauge(metric_name: str, value: Union[float, int]):
-    get_instance().gauge(metric_name, value)
-
-
-def event(title: str, text: str, data: dict):
-    get_instance().event(title, text, data)
 
 
 def get_instance():

@@ -5,4 +5,7 @@ __email__ = "juangbhanich.k@gmail.com"
 __version__ = "0.0.0"
 
 import logkit.log
-from logkit.log import debug, info, warning, error, critical, increment, gauge, event, get_instance
+from logkit.log import debug, info, warning, error, critical, get_instance
+
+import logkit.pulse
+from logkit.pulse import get, increment

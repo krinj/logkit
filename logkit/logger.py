@@ -48,8 +48,10 @@ class Logger:
     ISO_TIME_FMT = "%Y-%m-%dT%H:%M:%S%z"
     LOG_FMT = "%(levelname)s::%(asctime)s::%(message)s"
 
-    BOX_STEM = "├─"
-    BOX_STEM_END = "└─"
+    BOX_STEM = "├"
+    BOX_STEM_END = "└"
+    BOX_BRANCH = "─"
+    BOX_BRANCH_DOWN = "┬"
     LOG_BULLET = "┃"
     H_BAR = "─"
     H_BAR_BULLET = "┠"
@@ -297,12 +299,6 @@ class Logger:
 
         return self.file_logging_map[level]
 
-    def increment(self, metric_name: str, value: Union[float, int]):
-        self.write(f"Incrementing {metric_name}: {value}", None, logging.DEBUG)
-
-    def gauge(self, metric_name: str, value: Union[float, int]):
-        self.write(f"Gauging {metric_name}: {value}", None, logging.DEBUG)
-
     # ======================================================================================================================
     # Normal Logging.
     # ======================================================================================================================
@@ -395,11 +391,13 @@ class Logger:
         # Write the Header.
         self.console_write_line(message, level, with_color)
 
-        # Prepare the truncation limits.
-        n_elements = 0
-
         # Write the Items.
+        self.recursive_data_render(data, level, indent=0, indent_end_stack=[], with_color=with_color, truncated=truncated)
+
+    def recursive_data_render(self, data, level: int=0, indent: int=0, indent_end_stack: list=[],
+                              with_color: bool = False, truncated: bool=False):
         if data is not None:
+            n_elements = 0
             for k, v in data.items():
                 if truncated and n_elements > self.max_truncated_elements:
                     self.console_write_line(f"  + {len(data) - n_elements} more elements...",
@@ -408,13 +406,35 @@ class Logger:
                 else:
                     n_elements += 1
                     use_key = k
-                    data_string = truncate(str(v), self.max_message_size) if truncated else str(v)
-                    stem = self.BOX_STEM if n_elements < len(data) else self.BOX_STEM_END
+                    is_last_element = not (n_elements < len(data))
+                    element_is_populated_dict = type(v) is dict and len(v) > 0
+
+                    stem_arr = []
+                    for i in range(indent):
+                        stem_arr.append("│ " if not indent_end_stack[i] else "  ")
+
+                    stem_arr.append(self.BOX_STEM_END if is_last_element else self.BOX_STEM)
+                    stem_arr.append(self.BOX_BRANCH)
+
+                    if element_is_populated_dict:
+                        stem_arr.append(self.BOX_BRANCH_DOWN)
+                    else:
+                        stem_arr.append(self.BOX_BRANCH)
+
+                    stem = "".join(stem_arr)
+
                     if with_color:
                         use_key = self.set_level_color(k, level)
                         stem = self.set_level_color(stem, level)
-                    self.console_write_line(f"  {stem} {use_key}: {data_string}",
-                                            level, with_color)
+
+                    if element_is_populated_dict:
+                        self.console_write_line(f"  {stem} {use_key}", level, with_color)
+                        indent_end_stack.append(is_last_element)
+                        self.recursive_data_render(v, level, indent + 1, indent_end_stack, with_color, truncated)
+                        indent_end_stack.pop()
+                    else:
+                        data_string = truncate(str(v), self.max_message_size) if truncated else str(v)
+                        self.console_write_line(f"  {stem} {use_key}: {data_string}", level, with_color)
 
     def console_write_line(self, content, level, with_color: bool = False):
 

@@ -112,14 +112,14 @@ class Pulse:
         return time.strftime('%d %b %H:%M')
 
 
-def get(key: str="default"):
+def get(key: str="default", interval_unit: str="m", interval_value: int=15):
     if key not in PULSE_MAP:
-        PULSE_MAP[key] = Pulse(key)
+        PULSE_MAP[key] = Pulse(key, interval_unit, interval_value)
     return PULSE_MAP[key]
 
 
 def set_interval(interval_unit: str, interval_value: int):
-    pulse = get(DEFAULT_PULSE_KEY)
+    pulse = get(DEFAULT_PULSE_KEY, interval_unit, interval_value)
     pulse.set_interval(interval_unit, interval_value)
 
 

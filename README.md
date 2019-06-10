@@ -59,6 +59,49 @@ ERROR::2019-05-17T14:01:37+0800::test_logging:26::This is an error.::{}
 CRITICAL::2019-05-17T14:01:37+0800::test_logging:29::OMG. We are on fire.::{}
 ```
 
+## Pulse: Interval Data Collection
+
+> The `pulse` commands allow you to aggregate data over a time period. This is useful for counting number of detections over a set interval, for example.
+
+#### Increment
+
+```python
+from logkit import pulse
+pulse.increment("n_detections", 1)
+```
+
+This will increment the count of `n_detections` key by 1. The pulse will add these numbers up until it is time to emit a beat. It will then log the values through logkit, and reset all the values.
+
+#### Gauge
+
+```python
+pulse.gauge("latency", 30.4)
+```
+
+This is similar to above, except instead of adding the values to the key, it will override it.
+
+#### Set Interval
+
+```python
+pulse.set_interval("m", 15)  # Emit a beat one every 15 minutes.
+```
+
+Use this to configure the interval between beats.
+
+#### Output
+
+The output of the pulse will look like the following. The `counter` and `gauge` will be the parent object for each of the fields that you are tracking.
+
+```
+┃  ❤ Pulse ❤
+┃    ├── t_from: 10 Jun 05:50
+┃    ├── t_stop: 10 Jun 05:55
+┃    ├─┬ counter
+┃    │ └── drops: 63
+┃    └─┬ gauge
+┃      └── saline_level: 31
+```
+
 ## Logstash Ingesting
 
 The logs can be ingested and transformed by Logstash into Elasticsearch for more advanced visualization and record keeping.

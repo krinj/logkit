@@ -19,8 +19,8 @@ class SocketLogger:
 
         # Socket.
         socket.setdefaulttimeout(15)
-        self.host: str = host
-        self.port: int = port
+        self.host = host
+        self.port = port
         self.socket = None
         self.connect()
 
@@ -42,7 +42,10 @@ class SocketLogger:
             return False
 
         # It's still in the back-off phase.
-        logging.warning(f"Socket backing off. Duration: {backoff_duration:.2f} - Limit: {self.current_backoff}")
+        logging.warning("Socket backing off. Duration: {:.2f} - Limit: {}".format(
+            backoff_duration,
+            self.current_backoff
+        ))
         return True
 
     def connect(self):
@@ -51,7 +54,7 @@ class SocketLogger:
             self.socket.connect((self.host, self.port))
             self.reset_backoff()
         except Exception as e:
-            logging.error(f"Error: Unable to connect to socket: {e}")
+            logging.error("Error: Unable to connect to socket: {}".format(str(e)))
             if self.socket is not None:
                 self.socket.close()
                 self.socket = None
@@ -61,7 +64,7 @@ class SocketLogger:
         try:
             self.socket.close()
         except Exception as e:
-            logging.error(f"Warning: Unable to close socket: {e}")
+            logging.error("Warning: Unable to close socket: {}".format(str(e)))
         self.socket = None
 
     def send(self, message: str):
@@ -79,5 +82,5 @@ class SocketLogger:
                 self.reset_backoff()
             except Exception as e:
                 self.close()
-                logging.error(f"Error: Unable to send socket message: {e}")
+                logging.error("Error: Unable to send socket message: {}".format(str(e)))
                 self.backoff()

@@ -43,8 +43,8 @@ class Pulse:
         self._prev_time = time.time()
 
         # History of counter and gauges.
-        self.counter_map: Dict[str, Union[float, int]] = {}
-        self.gauge_map: Dict[str, Union[float, int]] = {}
+        self.counter_map = {}
+        self.gauge_map = {}
 
         info("Pulse Initialized", {"key": key})
 
@@ -101,7 +101,7 @@ class Pulse:
             gauge_data[k] = v
             self.gauge_map[k] = 0
 
-        info(f"{self.HEART} Pulse {self.HEART}", {
+        info("{} Pulse {}".format(self.HEART, self.HEART), {
             "t_from": self._time_start_str,
             "t_stop": self._time_end_str,
             "counter": counter_data,

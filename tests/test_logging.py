@@ -38,16 +38,16 @@ class TestLogging(TestCase):
 
         busy_data = {}
         for j in range(1000):
-            busy_data[f"key_{j}"] = j
+            busy_data["key_{}".format(j)] = j
 
         for f in log_functions:
-            f(f"{i} Hello World")
+            f("{} Hello World".format(i))
             i += 1
-            f(f"{i} Hello", "World")
+            f("{} Hello", "World".format(i))
             i += 1
-            f(f"{i} Hello", {"target": "World"})
+            f("{} Hello".format(i), {"target": "World"})
             i += 1
-            f(f"{i} Payload", {"rooples": i, "schmeckles": [1, 2, 3], "rand": random.random()})
+            f("{} Payload".format(i), {"rooples": i, "schmeckles": [1, 2, 3], "rand": random.random()})
             i += 1
 
         logging.warning("This is another native logging output.")

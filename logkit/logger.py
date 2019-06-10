@@ -38,7 +38,7 @@ class Logger:
 
     # DEFAULTS
     DEFAULT_ENV_PATH = "logkit.env"
-    COLUMN_PADDING: int = 2  # Minimum width of column when writing to console.
+    COLUMN_PADDING = 2  # Minimum width of column when writing to console.
 
     # Config parsing.
     TRUE_VALUES = ("1", "on", "true")
@@ -72,13 +72,13 @@ class Logger:
     def __init__(self):
         # Native Python logging module.
         self.file_logger = None
-        self.file_logging_map: dict = None
+        self.file_logging_map = None
 
-        self.socket_logger: SocketLogger = None
+        self.socket_logger = None
 
-        self.with_color: bool = True
-        self.with_level_prefix: bool = True
-        self.human_mode: bool = False
+        self.with_color = True
+        self.with_level_prefix = True
+        self.human_mode = False
 
         self.max_message_size = 256
         self.max_truncated_elements = 3
@@ -95,7 +95,7 @@ class Logger:
         self._load_config()
 
         # Create the native logging map.
-        self.native_logging_map: dict = {
+        self.native_logging_map = {
             logging.DEBUG: self.native_logger.debug,
             logging.INFO: self.native_logger.info,
             logging.WARNING: self.native_logger.warning,
@@ -145,7 +145,7 @@ class Logger:
 
     def _append_to_env(self, key: str, value):
         with open(self.DEFAULT_ENV_PATH, "a") as f:
-            f.write(f"\n{key}={value}")
+            f.write("\n{}={}".format(key, value))
 
     def _load_config(self):
         """
@@ -169,7 +169,7 @@ class Logger:
             if type(v) is dict:
 
                 for k2, v2 in v.items():
-                    env_key = f"{k.upper()}__{k2.upper()}"
+                    env_key = "{}__{}".format(k.upper(), k2.upper())
 
                     if env_key not in os.environ:
                         self._append_to_env(env_key, str(v2))
@@ -185,7 +185,7 @@ class Logger:
 
                     data[k][k2] = None if os.environ[env_key].lower() in self.NULL_VALUES else str(os.environ[env_key])
             else:
-                env_key = f"{k.upper()}"
+                env_key = k.upper()
 
                 if env_key not in os.environ:
                     self._append_to_env(env_key, str(v))
@@ -251,11 +251,11 @@ class Logger:
                 for k2, v2 in v.items():
                     if v2 is None:
                         v2 = 0
-                    lines.append(f"{k.upper()}__{k2.upper()}={v2}")
+                    lines.append("{}__{}={}".format(k.upper(), k2.upper(), v2))
             else:
                 if v is None:
                     v = 0
-                lines.append(f"{k.upper()}={v}")
+                lines.append("{}={}".format(k.upper(), v))
 
         pather.create(self.DEFAULT_ENV_PATH)
         with open(self.DEFAULT_ENV_PATH, "w") as f:
@@ -305,7 +305,7 @@ class Logger:
 
     def write_time_bar(self):
         if time.time() - self.last_bar_time >= self.TIME_BAR_INTERVAL:
-            time_str = f"{datetime.datetime.now():%a, %d %b %H:%M}"
+            time_str = "{:%a, %d %b %H:%M}".format(datetime.datetime.now())
             self.write_with_divider(time_str)
             self.last_bar_time = time.time()
 
@@ -321,7 +321,7 @@ class Logger:
         right_side = self.set_color(right_side, self.BLACK)
         message = self.set_color(message, self.BLACK)
 
-        formatted_message = f"{left_side} {message} {right_side}"
+        formatted_message = "{} {} {}".format(left_side, message, right_side)
         print(formatted_message)
         sys.stdout.flush()
 
@@ -331,7 +331,7 @@ class Logger:
         data_string = None
         if data is not None:
             if type(data) is not dict:
-                message = f"{message}: {str(data)}"
+                message = "{}: {}".format(message, str(data))
                 data = None
             else:
                 data_string = json.dumps(data)
@@ -345,7 +345,7 @@ class Logger:
         if self.socket_logger is not None:
             time_format = datetime.datetime.now(datetime.timezone.utc).strftime(self.ISO_TIME_FMT)
             log_level = logging.getLevelName(level).upper()
-            socket_message = f"{log_level}::{time_format}::{single_line_message}"
+            socket_message = "{}::{}::{}".format(log_level, time_format, single_line_message)
             self.socket_logger.send(socket_message)
 
         if self.human_mode:
@@ -377,7 +377,7 @@ class Logger:
         from_stack = inspect.stack()[4]
         stack_module = inspect.getmodule(from_stack[0])
         module_name = stack_module.__name__.split(".")[-1]
-        return f"{module_name}:{from_stack.lineno}"
+        return "{}:{}".format(module_name, from_stack.lineno)
 
     def console_write(self, message, data, level, with_color: bool = False, truncated: bool=False):
         """ Custom function to write message to console. """
@@ -400,7 +400,7 @@ class Logger:
             n_elements = 0
             for k, v in data.items():
                 if truncated and n_elements > self.max_truncated_elements:
-                    self.console_write_line(f"  + {len(data) - n_elements} more elements...",
+                    self.console_write_line("  + {} more elements...".format(len(data) - n_elements),
                                             level, with_color)
                     break
                 else:
@@ -428,31 +428,31 @@ class Logger:
                         stem = self.set_level_color(stem, level)
 
                     if element_is_populated_dict:
-                        self.console_write_line(f"  {stem} {use_key}", level, with_color)
+                        self.console_write_line("  {} {}".format(stem, use_key), level, with_color)
                         indent_end_stack.append(is_last_element)
                         self.recursive_data_render(v, level, indent + 1, indent_end_stack, with_color, truncated)
                         indent_end_stack.pop()
                     else:
                         data_string = truncate(str(v), self.max_message_size) if truncated else str(v)
-                        self.console_write_line(f"  {stem} {use_key}: {data_string}", level, with_color)
+                        self.console_write_line("  {} {}: {}".format(stem, use_key, data_string), level, with_color)
 
     def console_write_line(self, content, level, with_color: bool = False):
 
         prefix = self.LOG_BULLET
         if self.with_level_prefix:
-            prefix += f" {logging.getLevelName(level)[:4]}: "
+            prefix += " {}: ".format(logging.getLevelName(level)[:4])
         pad_length = max(0, self.COLUMN_PADDING - len(prefix))
         prefix += " " * pad_length
 
         if with_color:
             if level > logging.INFO:
-                content = f"{prefix} {content}"
+                content = "{} {}".format(prefix, content)
                 content = self.set_level_color(content, level)
             else:
                 prefix = self.set_level_color(prefix, level)
-                content = f"{prefix} {content}"
+                content = "{} {}".format(prefix, content)
         else:
-            content = f"{prefix} {content}"
+            content = "{} {}".format(prefix, content)
 
         print(content)
         sys.stdout.flush()
@@ -471,4 +471,4 @@ class Logger:
         return content
 
     def set_color(self, content, color):
-        return f"{color}{content}{self.DEFAULT_COLOR}"
+        return "{}{}{}".format(color, content, self.DEFAULT_COLOR)

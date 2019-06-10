@@ -24,6 +24,7 @@ class Pulse:
     MINUTES = "m"
     HOURS = "h"
     HEART = "❤"  # f"\33[31m❤\33[0m"
+    SLEEP_INTERVAL = 1
 
     def __init__(self, key: str, interval_unit: str="m", interval_value: int=15):
 
@@ -39,6 +40,7 @@ class Pulse:
         # Internal Meta-data.
         self._time_start_str = self._get_time_str()
         self._time_end_str = self._get_time_str()
+        self._prev_time = time.time()
 
         # History of counter and gauges.
         self.counter_map: Dict[str, Union[float, int]] = {}
@@ -79,8 +81,10 @@ class Pulse:
 
     def _loop(self):
         while True:
-            time.sleep(self._interval)
-            self._execute()
+            time.sleep(self.SLEEP_INTERVAL)
+            duration = time.time() - self._prev_time
+            if duration > self._interval:
+                self._execute()
 
     def _execute(self):
         # The interval has come, so we can send the messages.
@@ -106,20 +110,21 @@ class Pulse:
 
         # Reset all parameters.
         self._time_start_str = self._get_time_str()
+        self._prev_time = time.time()
 
     @staticmethod
     def _get_time_str():
         return time.strftime('%d %b %H:%M')
 
 
-def get(key: str="default", interval_unit: str="m", interval_value: int=15):
+def get(key: str="default"):
     if key not in PULSE_MAP:
-        PULSE_MAP[key] = Pulse(key, interval_unit, interval_value)
+        PULSE_MAP[key] = Pulse(key)
     return PULSE_MAP[key]
 
 
 def set_interval(interval_unit: str, interval_value: int):
-    pulse = get(DEFAULT_PULSE_KEY, interval_unit, interval_value)
+    pulse = get(DEFAULT_PULSE_KEY)
     pulse.set_interval(interval_unit, interval_value)
 
 

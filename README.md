@@ -138,23 +138,26 @@ When you first run the logger, it will look for a `logkit.env` file to set up it
 The file has the values below:
 
 ```bash
-# This controls whether we should log the results to a file as well.
-FILE_LOGGER__ACTIVE=1  # Either 0 or 1
-FILE_LOGGER__PATH=./logs/output.log  # Where to save the log
-ROTATION__INTERVAL_UNIT=d  # The unit of time to rotate the logs (d, h, m, etc).
-ROTATION__INTERVAL_VALUE=1  # The value of time to rotate the logs.
-ROTATION__BACKUP_COUNT=30  # How many back-ups to keep.
+# If we should automatically write logs to disk.
+FILE_LOGGER__ACTIVE=False
+FILE_LOGGER__PATH=./logs/output.log
 
-# If enabled, this will also send all log messages to a socket.
-SOCKET_LOGGER__ACTIVE=0  # Either 0 or 1
+# Settings for rotating the disk logs.
+ROTATION__INTERVAL_UNIT=d
+ROTATION__INTERVAL_VALUE=1
+ROTATION__BACKUP_COUNT=30
+
+# If we should automatically log to a socket.
+SOCKET_LOGGER__ACTIVE=False
 SOCKET_LOGGER__HOST=127.0.0.1
 SOCKET_LOGGER__PORT=5000
 
-# The log level to use for the console/application and file logs.
-# Values: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+# Log levels to display [DEBUG, INFO, WARNING, ERROR, CRITICAL]
 CONSOLE_LOG_LEVEL=INFO
 FILE_LOG_LEVEL=INFO
 
-# If enabled, this will format the terminal output to be more human readable.
-HUMAN_MODE=1
+# Readability settings for the console log.
+HUMAN_MODE=False
+WITH_COLOR=False
+WITH_LEVEL_PREFIX=False
 ```

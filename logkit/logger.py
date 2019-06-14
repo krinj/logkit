@@ -340,7 +340,7 @@ class Logger:
         single_line_message = self.format_message_to_string(message, module_trace, data_string)
         file_logging_action = self.get_file_logging_action(level)
         if file_logging_action is not None:
-            file_logging_action(single_line_message)
+            file_logging_action(single_line_message.encode('utf-8'))
 
         if self.socket_logger is not None:
             time_format = datetime.datetime.now(datetime.timezone.utc).strftime(self.ISO_TIME_FMT)

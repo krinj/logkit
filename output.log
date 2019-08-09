@@ -1,0 +1,30 @@
+
+INFO::2019-07-12T10:42:02+0800::LogKit Initialized: Propagating logs to root logger and overriding root config.
+INFO::2019-07-12T10:42:02+0800::test_logging:14::Hello World!::{}
+INFO::2019-07-12T10:42:02+0800::test_logging:17::Some Data::{"greeting_count": 1, "schmeckles": [1, 2, 3], "lang": "EN"}
+DEBUG::2019-07-12T10:42:02+0800::test_logging:20::My left stroke just went viral.::{}
+WARNING::2019-07-12T10:42:02+0800::test_logging:23::Be careful!::{}
+ERROR::2019-07-12T10:42:02+0800::test_logging:26::This is an error.::{}
+CRITICAL::2019-07-12T10:42:02+0800::test_logging:29::OMG. We are on fire.::{}
+
+This is a native print output.
+DEBUG::2019-07-12T10:42:02+0800::test_logging:44::0 Hello World::{}
+DEBUG::2019-07-12T10:42:02+0800::test_logging:46::{} Hello: World::{}
+DEBUG::2019-07-12T10:42:02+0800::test_logging:48::2 Hello::{"target": "World"}
+DEBUG::2019-07-12T10:42:02+0800::test_logging:50::3 Payload::{"rooples": 3, "schmeckles": [1, 2, 3], "rand": 0.29824057329591813}
+INFO::2019-07-12T10:42:02+0800::test_logging:44::4 Hello World::{}
+INFO::2019-07-12T10:42:02+0800::test_logging:46::{} Hello: World::{}
+INFO::2019-07-12T10:42:02+0800::test_logging:48::6 Hello::{"target": "World"}
+INFO::2019-07-12T10:42:02+0800::test_logging:50::7 Payload::{"rooples": 7, "schmeckles": [1, 2, 3], "rand": 0.3534620801732089}
+WARNING::2019-07-12T10:42:02+0800::test_logging:44::8 Hello World::{}
+WARNING::2019-07-12T10:42:02+0800::test_logging:46::{} Hello: World::{}
+WARNING::2019-07-12T10:42:02+0800::test_logging:48::10 Hello::{"target": "World"}
+WARNING::2019-07-12T10:42:02+0800::test_logging:50::11 Payload::{"rooples": 11, "schmeckles": [1, 2, 3], "rand": 0.6796841049815637}
+ERROR::2019-07-12T10:42:02+0800::test_logging:44::12 Hello World::{}
+ERROR::2019-07-12T10:42:02+0800::test_logging:46::{} Hello: World::{}
+ERROR::2019-07-12T10:42:02+0800::test_logging:48::14 Hello::{"target": "World"}
+ERROR::2019-07-12T10:42:02+0800::test_logging:50::15 Payload::{"rooples": 15, "schmeckles": [1, 2, 3], "rand": 0.48237607089803325}
+CRITICAL::2019-07-12T10:42:02+0800::test_logging:44::16 Hello World::{}
+CRITICAL::2019-07-12T10:42:02+0800::test_logging:46::{} Hello: World::{}
+CRITICAL::2019-07-12T10:42:02+0800::test_logging:48::18 Hello::{"target": "World"}
+CRITICAL::2019-07-12T10:42:02+0800::test_logging:50::19 Payload::{"rooples": 19, "schmeckles": [1, 2, 3], "rand": 0.0359597481053785}

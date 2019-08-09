@@ -7,6 +7,7 @@ If not, it will fail silently.
 import logging
 import socket
 import time
+import threading
 
 
 class SocketLogger:
@@ -16,6 +17,7 @@ class SocketLogger:
         self.current_backoff = 1
         self.prev_back_off_time = 0
         self.max_back_off = 64
+        self.lock = threading.Lock()
 
         # Socket.
         socket.setdefaulttimeout(15)
@@ -72,15 +74,27 @@ class SocketLogger:
         if self.is_backing_off():
             return
 
-        if self.socket is None:
-            self.connect()
+        # Delegate the actual sending to a daemon thread.
+        threading.Thread(target=self.threaded_send, args=[message], daemon=True).start()
 
-        if self.socket is not None:
-            try:
-                message += "\n"
-                self.socket.sendall(bytes(message, "utf-8"))
-                self.reset_backoff()
-            except Exception as e:
-                self.close()
-                logging.error("Error: Unable to send socket message: {}".format(str(e)))
-                self.backoff()
+    def threaded_send(self, message: str):
+        lock = self.lock.acquire(blocking=True)
+
+        # Could not acquire a lock in time.
+        if not lock:
+            return
+        try:
+            if self.socket is None:
+                self.connect()
+
+            if self.socket is not None:
+                try:
+                    message += "\n"
+                    self.socket.sendall(bytes(message, "utf-8"))
+                    self.reset_backoff()
+                except Exception as e:
+                    self.close()
+                    logging.error("Error: Unable to send socket message: {}".format(str(e)))
+                    self.backoff()
+        finally:
+            self.lock.release()
